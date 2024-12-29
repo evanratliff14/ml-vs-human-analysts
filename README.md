@@ -1,0 +1,109 @@
+"""
+Evan Ratliff
+
+Use DEAP for Draft Bot GA
+ESPN has historical draft data
+How many generations do we need? We could run multiple times per season
+Use in season data from nfl_data_py, or if I want week-by-week data I could find some other way to query
+Use sleeper API to simulate drafts with bots
+
+
+
+
+
+import_seasonal_data([1999-2022]) (test on 2023)
+
+nfl.clean_nfl_data(raw_df)
+
+map ids
+
+nfl.import_win_totals() ---> win total lines: columns
+
+nfl.import_qbr
+
+nfl.import_seasonal_rosters()
+
+nfl.import_draft_picks()
+
+nfl.import_draft_values()
+
+nfl.import_injuries
+
+nfl.import_depth_charts
+
+nfl.import_snap_counts(mac jones)['snaps].sum()
+
+nfl.import_combine_data(years, positions)
+
+# we probably have 5000 data points available --> 40-60 variables?
+
+columns to use: 
+
+all: (season), season_type: reg and post, win total lines, draft position, injury status, 
+depth chart, snap counts, games (games played), YEARS IN THE LEAGUE? (not consistent enough), AGE?? (scrape?) (9 vars)
+
+fpts counting: rushing_fumbles_lost, sack_fumbles_lost, receiving_fumbles_lost,
+ receptions, rushing_yards,
+receiving_yards, rushing_yards, passing_yards,
+passing_tds, rushing_tds, receiving_tds, sack_yards?? 
+rushing_2pt_conversions, passing_2pt_conversions, passing_2pt_conversions,
+
+QB: attempts, completions/attempts (pacr), passing_yards, passing_tds, interceptions, 
+sacks, passing_air_yards, passing_epa, carries, rushing_epa, rushing_yards, rushing_tds,
+turnovers = (rushing_fumbles + sack_fumbles + interceptions), qbr, 2pt_conversions,
+adot(total air yards/total attempts), dakota (Adjusted EPA + Completed passes over expectation)
+
+RB: wopr_x (weighted target and air yard opportunity per route run), 
+wopr_y(yardage per route, explosivity/route ), 
+RACR(receiving air conversion ratio), tgt_sh, rtd_sh,
+carries, rushing_yards, rushing_tds, rushing_fumbles + receiving_fumbles, rushing_epa (effectiveness),
+targets, receptions, tgt_sh, rtd_sh, 2pt_conversions
+
+WR(10):  wopr_x (weighted target and air yard opportunity per route run), 
+wopr_y(yardage per route, explosivity/route ), 
+ RACR(How well does a player convert a yard thrown at him into receiving yards?), 
+ tgt_sh, rtd_sh, receiving_yards, carries, rushing_epa, fumbles_lost, 2pt_conversions (sum), 
+ adot(total air yards/total targets)
+
+TE (10):  wopr_x (weighted target and air yard opportunity per route run), 
+wopr_y(yardage per route, explosivity/route ), 
+ RACR(How well does a player convert a yard thrown at him into receiving yards?), 
+ tgt_sh, rtd_sh, receiving_yards, carries, rushing_epa, fumbles_lost, 2pt_conversions (sum),
+ adot(total air yards/total targets)
+
+rookies: w8dom (weighted dominator rating), CFB data api stats, combine data, 
+mapped pff draft values: nfl.import_draft_values()--> 
+
+
+#other data to include: avg cushion, avg separation from ngs
+
+# after I collect this dataframe, I should write it as a csv. 
+
+Then, I should pd.read_csv to pass in teams to xgboost based on:
+
+RB: RB + RBall and QB
+WRx: WRxall + WRx, WRy, WRz, QB 
+TE: TE+ TEall, QB
+QB: QB + QBall, TE, WRx, WRy
+
+
+
+
+
+player_id', 'season', 'season_type', 'completions', 'attempts',
+       'passing_yards', 'passing_tds', 'interceptions', 'sacks', 'sack_yards',
+       'sack_fumbles', 'sack_fumbles_lost', 'passing_air_yards',
+       'passing_yards_after_catch', 'passing_first_downs', 'passing_epa',
+       'passing_2pt_conversions', 'pacr', 'dakota', 'carries', 'rushing_yards',
+       'rushing_tds', 'rushing_fumbles', 'rushing_fumbles_lost',
+       'rushing_first_downs', 'rushing_epa', 'rushing_2pt_conversions',
+       'receptions', 'targets', 'receiving_yards', 'receiving_tds',
+       'receiving_fumbles', 'receiving_fumbles_lost', 'receiving_air_yards',
+       'receiving_yards_after_catch', 'receiving_first_downs', 'receiving_epa',
+       'receiving_2pt_conversions', 'racr', 'target_share', 'air_yards_share',
+       'wopr_x', 'special_teams_tds', 'fantasy_points', 'fantasy_points_ppr',
+       'games', 'tgt_sh', 'ay_sh', 'yac_sh', 'wopr_y', 'ry_sh', 'rtd_sh',
+       'rfd_sh', 'rtdfd_sh', 'dom', 'w8dom', 'yptmpa', 'ppr_sh'],
+      dtype='object')
+
+"""
