@@ -24,6 +24,7 @@ nfl.import_qbr
 nfl.import_seasonal_rosters()
 
 nfl.import_draft_picks()
+## has age, map by player and position
 
 nfl.import_draft_values()
 
@@ -39,54 +40,62 @@ nfl.import_combine_data(years, positions)
 
 columns to use: 
 
-all: (season), season_type: reg and post, win total lines, draft position, injury status, 
-depth chart, snap counts, games (games played), YEARS IN THE LEAGUE? (not consistent enough), AGE?? (scrape?) (9 vars)
+all: (season), season_type: reg and post, win total lines, draft value, injury status (categorical), 
+depth chart, games (games played), years in the league, age  (9 vars)
+Track: team
 
-fpts counting: rushing_fumbles_lost, sack_fumbles_lost, receiving_fumbles_lost,
+//fpts counting: rushing_fumbles_lost, sack_fumbles_lost, receiving_fumbles_lost,
  receptions, rushing_yards,
 receiving_yards, rushing_yards, passing_yards,
 passing_tds, rushing_tds, receiving_tds, sack_yards?? 
 rushing_2pt_conversions, passing_2pt_conversions, passing_2pt_conversions,
+//
 
-QB: attempts, completions/attempts (pacr), passing_yards, passing_tds, interceptions, 
-sacks, passing_air_yards, passing_epa, carries, rushing_epa, rushing_yards, rushing_tds,
-turnovers = (rushing_fumbles + sack_fumbles + interceptions), qbr, 2pt_conversions,
-adot(total air yards/total attempts), dakota (Adjusted EPA + Completed passes over expectation)
+# predict half_ppr fantasy_points
+
+QB: completions/attempts (pacr), //passing_yards, passing_tds/game,
+sacks,// passing_air_yards/game, carries/game, yards per carry, rushing_epa, rushing_yards/game, rushing_tds/game,
+turnovers/game = (rushing_fumbles + sack_fumbles + interceptions)game, pass rate
+adot(total air yards/total attempts), dakota (Adjusted EPA + Completed passes over expectation) or passing epa
 
 RB: wopr_x (weighted target and air yard opportunity per route run), 
 wopr_y(yardage per route, explosivity/route ), 
-RACR(receiving air conversion ratio), tgt_sh, rtd_sh,
-carries, rushing_yards, rushing_tds, rushing_fumbles + receiving_fumbles, rushing_epa (effectiveness),
-targets, receptions, tgt_sh, rtd_sh, 2pt_conversions
+RACR(receiving air conversion ratio), tgt_sh, rtd_sh, team rush rate
+carries/game, receiving + rushing_tds/game, rushing_fumbles + receiving_fumbles/game, rushing_epa (effectiveness), avg yac above exp, catch %
+, tgt_sh, rtd_sh,
 
 WR(10):  wopr_x (weighted target and air yard opportunity per route run), 
 wopr_y(yardage per route, explosivity/route ), 
  RACR(How well does a player convert a yard thrown at him into receiving yards?), 
- tgt_sh, rtd_sh, receiving_yards, carries, rushing_epa, fumbles_lost, 2pt_conversions (sum), 
- adot(total air yards/total targets)
+ tgt_sh, rtd_sh, targets/game, receiving_yards/game, receiving+rushing tds/game, carries/game,
+ adot(total air yards/total targets), average separation (ngs), avg yac above exp, catch %
 
 TE (10):  wopr_x (weighted target and air yard opportunity per route run), 
-wopr_y(yardage per route, explosivity/route ), 
+wopr_y(yardage per route, explosivity/route ), pass rate
  RACR(How well does a player convert a yard thrown at him into receiving yards?), 
- tgt_sh, rtd_sh, receiving_yards, carries, rushing_epa, fumbles_lost, 2pt_conversions (sum),
- adot(total air yards/total targets)
+ tgt_sh, rtd_sh, targets/game, receiving_yards/game, receiving+rushing tds/game, carries/game,
+ adot(total air yards/total targets), average separation (from ngs), avg yac above exp, catch %
+
 
 rookies: w8dom (weighted dominator rating), CFB data api stats, combine data, 
-mapped pff draft values: nfl.import_draft_values()--> 
-
+mapped pff draft values: nfl.import_draft_values()--> , pass rate, rush rate
 
 #other data to include: avg cushion, avg separation from ngs
 
 # after I collect this dataframe, I should write it as a csv. 
 
-Then, I should pd.read_csv to pass in teams to xgboost based on:
+Then, I should pd.read_csv to pass in teams to scikit learn based on:
+
 RB: RB + RBall and QB
-WRx: WRxall + WRx, WRy, WRz, QB 
+WRx: WRxall + WRx, WRy, WRz, QB, RB
 TE: TE+ TEall, QB
 QB: QB + QBall, TE, WRx, WRy
 
+add a gitignore and virtual environment for packages, also requirements.txt
 
+use scikit learn
 
+xg boost makes deciison tree for me
 
 
 player_id', 'season', 'season_type', 'completions', 'attempts',
