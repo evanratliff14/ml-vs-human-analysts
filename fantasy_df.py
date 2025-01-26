@@ -1,6 +1,7 @@
 import pandas as pd
 import nfl_data_py as nfl
 import numpy as np
+import pickle
 
 class FantasyDataFrame:
     def __init__(self):
@@ -106,8 +107,11 @@ class FantasyDataFrame:
             left_on = ['player_id', 'season'],
             right_on= ['gsis_id', 'season'],
             how='left',
-            suffixes = ["", '_y']
+            suffixes = ["", '']
         )
+        # drop because NaN causes error for astype
+        players_stats.dropna(subset = ['depth_team'], inplace = True)
+        players_stats['depth_team'] = players_stats['depth_team'].astype('int')
 
         # will assign win totals based on team column (might need heavy mapping w dicts)
         #https://www.nfeloapp.com/nfl-power-ratings/nfl-win-totals/
@@ -168,16 +172,14 @@ class FantasyDataFrame:
         players_stats['next_season'] = players_stats['season']-1
 
         ## assign future stats for y values
+        #important: get future team to load other_epas
         players_stats = players_stats.merge(
-        players_stats[['player_id', 'next_season', 'fantasy_points','fantasy_points_ppr', 'fantasy_points_half_ppr','ir_games','games']],
-        left_on = ['player_id', 'season'],
-        right_on = ['player_id', 'next_season'],
-        how = 'left',
-        suffixes = ('', '_future')
-
+            players_stats[['player_id', 'next_season', 'fantasy_points','fantasy_points_ppr', 'fantasy_points_half_ppr','games', 'team']],
+            left_on = ['player_id', 'season'],
+            right_on = ['player_id', 'next_season'],
+            how = 'left',
+            suffixes = ('', '_future')                                                                                                      
         )
-
-        
 
         # create fpts/game metrics (future and current)
         players_stats['future_ppr/game'] = players_stats['fantasy_points_ppr_future']/players_stats['games_future']
@@ -185,19 +187,55 @@ class FantasyDataFrame:
         players_stats['ppr/game'] = players_stats['fantasy_points_ppr']/players_stats['games']
         players_stats['half_ppr/game'] = players_stats['fantasy_points_half_ppr']/players_stats['games']
 
-        self.players_stats = players_stats
+        # calculate each combined position epa (for depth chart 1 and 2)
+        # each position model class will need to subtract their own epa to get the result, other_rbs_epa
+        print("Importing player contextual stats...")
 
-    # def __count_status(self, row):
-    # to add in, need .apply
-        # players_stats = self.players_stats
-        # games_played = players_stats.loc[(players_stats['player_name'] == row['player_name']) & ((players_stats['season']==row['season'])) & (players_stats['position']==row['position']), 'games_played'].squeeze()
-        # ir_games = players_stats.loc[(players_stats['player_name'] == row['player_name']) & ((players_stats['season']==row['season'])) & (players_stats['position']==row['position']), 'ir_games'].squeeze()
-        # if row['status'] == 'ACT':
-        #     players_stats.loc[(players_stats['player_name']==row['player_name']) & (players_stats['season']==row['season']) & (players_stats['position']==row['position']), 'games_played'] = games_played + 1
-        #     self.players_stats = players_stats
-        # elif row['status'] == 'RES':
-        #     players_stats.loc[(players_stats['player_name']==row['player_name']) & (players_stats['season']==row['season']) & (players_stats['position']==row['position']), 'ir_games'] = ir_games + 1
-        #     self.players_stats = players_stats
+        tes = players_stats.loc[players_stats['position']=='TE']
+        tes = players_stats.loc[players_stats['depth_team'] <=2]
+        players_stats = players_stats.merge(
+            tes[['player_id', 'season', 'team_future', 'receiving_epa']],
+            left_on = ['player_id', 'season', 'team_future'],
+            right_on = ['player_id', 'season', 'team_future'],
+            how = 'left',
+            suffixes = ['', '_team_tes']
+        )
+
+
+        qbs = players_stats.loc[players_stats['position']=='QB']
+        qbs = players_stats.loc[players_stats['depth_team'] ==1]
+        players_stats = players_stats.merge(
+            qbs[['player_id', 'season', 'team_future', 'rushing_epa', 'dakota', 'passing_epa']],
+            left_on = ['player_id', 'season', 'team_future'],
+            right_on = ['player_id', 'season', 'team_future'],
+            how = 'left',
+            suffixes = ['', '_team_qbs']
+        )
+
+
+        wrs = players_stats.loc[players_stats['position']=='WR']
+        wrs = players_stats.loc[players_stats['depth_team'] <=2]
+        players_stats = players_stats.merge(
+            wrs[['player_id', 'season', 'team_future', 'receiving_epa']],
+            left_on = ['player_id', 'season', 'team_future'],
+            right_on = ['player_id', 'season', 'team_future'],
+            how = 'left',
+            suffixes = ['', '_team_wrs']
+        )
+
+
+        rbs = players_stats.loc[players_stats['position']=='RB']
+        rbs = players_stats.loc[players_stats['depth_team'] <=2]
+        players_stats = players_stats.merge(
+            rbs[['player_id', 'season', 'team_future', 'receiving_epa', 'rushing_epa']],
+            left_on = ['player_id', 'season', 'team_future'],
+            right_on = ['player_id', 'season', 'team_future'],
+            how = 'left',
+            suffixes = ['', '_team_rbs']
+        )
+        
+
+        self.players_stats = players_stats
 
     def __map_ids(self):
         df = self.players_stats
@@ -223,4 +261,7 @@ class FantasyDataFrame:
         self.players_stats = df
 
 fdf = FantasyDataFrame()
-fdf.players_stats.to_csv('fantasy_data.csv') 
+
+with open("fantasy_data.pkl", 'wb') as file:
+    pickle.dump(fdf.players_stats, file)
+fdf.players_stats.to_csv('fantasy_data.csv')
