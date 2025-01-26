@@ -10,6 +10,10 @@ class FantasyDataFrame:
         self.__load_data()
 
     def __load_data(self):
+        # TODO: merge teams for next season
+        # TODO: Merge other_epas
+        
+
         # use players_stats as base file
         players_stats = nfl.import_seasonal_data(years=self.__years)
         players_stats = players_stats[players_stats['season_type']=='REG']
@@ -173,6 +177,8 @@ class FantasyDataFrame:
 
         )
 
+        
+
         # create fpts/game metrics (future and current)
         players_stats['future_ppr/game'] = players_stats['fantasy_points_ppr_future']/players_stats['games_future']
         players_stats['future_half_ppr/game'] = players_stats['fantasy_points_half_ppr_future']/players_stats['games_future']
@@ -192,6 +198,7 @@ class FantasyDataFrame:
         # elif row['status'] == 'RES':
         #     players_stats.loc[(players_stats['player_name']==row['player_name']) & (players_stats['season']==row['season']) & (players_stats['position']==row['position']), 'ir_games'] = ir_games + 1
         #     self.players_stats = players_stats
+
     def __map_ids(self):
         df = self.players_stats
         ## map all values in column id to names
