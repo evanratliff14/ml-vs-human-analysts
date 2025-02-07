@@ -262,6 +262,6 @@ class FantasyDataFrame:
 
 fdf = FantasyDataFrame()
 
-with open("fantasy_data.pkl", 'wb') as file:
-    pickle.dump(fdf.players_stats, file)
+fdf.players_stats.to_pickle('fantasy_data.pkl')
+
 fdf.players_stats.to_csv('fantasy_data.csv')
