@@ -13,7 +13,7 @@ import copy
 class Model:
     def __init__(self, points_type):
         self.train_years = [2003, 2004, 2005, 2006, 2007, 2008, 2009, 1010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019]
-        self.test_years = [2021, 2022]
+        self.test_years = [2021, 2022, 2023]
         self.fantasy_data = pd.read_pickle("fantasy_data.pkl")
         self.features = None
         self.train_data = None
@@ -34,7 +34,6 @@ class Model:
         except:
             print("Error in cross_validate")
     
-    @override
     def __str__(self):
         model_string = "Features: \n"
         model_string = model_string + str(self.features) + "\n"

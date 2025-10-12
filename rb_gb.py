@@ -108,5 +108,11 @@ class Rb_XGBoost(Model):
             features.append(self.__features[i])
         self.__features = features
         print("Features set.")
+
+    def __str__(self):
+        return super().__str__()
+        
+    def cross_validate(self):
+        return super().cross_validate()
         
     
