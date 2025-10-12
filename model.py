@@ -1,5 +1,5 @@
 import pickle
-from abc import sABC, abstractmethod
+from abc import abstractmethod
 import pandas as pd
 import pickle
 from model import Model

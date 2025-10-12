@@ -1,17 +1,15 @@
 import pandas as pd
-import nfl_data_py as nfl
+import nflreadpy as nfl
 import numpy as np
 import pickle
 from datetime import datetime
+import pyarrow
 
 class FantasyDataFrame:
     def __init__(self):
         print('Initializing...')
-        current_time = datetime.now().year
         # normalize to football year season
-        if current_time.month <=8:
-            current_time = current_time - 1
-        self.years = list(range(2003, current_time))
+        self.years = [year for year in range(2016, nfl.get_current_season())]
         self.pos = ['TE', 'RB', 'WR', 'QB']
         self.load_data()
 
@@ -21,42 +19,49 @@ class FantasyDataFrame:
         
 
         # use players_stats as base file
-        players_stats = nfl.import_seasonal_data(years=self.years)
+        players_stats = nfl.load_player_stats(self.years).to_pandas()
         players_stats = players_stats[players_stats['season_type']=='REG']
-        nfl.clean_nfl_data(players_stats)
-        players_stats.drop(['passing_first_downs',
-       'rushing_first_downs',  'yac_sh', 'dom', 'yptmpa', 'ppr_sh'], axis=1, inplace=True)
+        print(players_stats.head)
         
         self.players_stats = players_stats
         self.map_ids()
         # create custom stats
+        players_stats['fantasy_points_standard'] = players_stats['fantasy_points_ppr']-(players_stats['receptions']*1)
         players_stats['fantasy_points_half_ppr'] = players_stats['fantasy_points_ppr']-(players_stats['receptions']*0.5)
         
         # track games played and games missed on IR
-        weekly_rosters = nfl.clean_nfl_data(nfl.import_weekly_rosters(self.years))[['player_name', 'season', 'week','status', 'position']]
+        injuries = nfl.load_injuries([year for year in self.years if year >=2009])[['gsis_id', 'season', 'week','report_status', 'position']].to_pandas()
 
         # count games on ir and games played
-        weekly_rosters['ir_games'] = weekly_rosters.groupby(['player_name', 'position', 'season'])['status'].transform(lambda x: (x == 'RES').sum())
-        weekly_rosters['out_games'] = weekly_rosters.groupby(['player_name', 'position', 'season'])['status'].transform(lambda x: (x == 'INA').sum())
+        injuries['ir_games'] = injuries.groupby(['gsis_id', 'position', 'season'])['report_status'].transform(lambda x: (x == 'RES').sum())
+        injuries['out_games'] = injuries.groupby(['gsis_id', 'position', 'season'])['report_status'].transform(lambda x: (x == 'INA').sum())
+        injuries['total_missed_games'] = injuries['out_games'] + injuries['ir_games']
 
         print('Importing games spent on IR...')
 
         players_stats = players_stats.merge(
-            weekly_rosters[['player_name', 'position', 'season', 'ir_games', 'out_games']].drop_duplicates(),
-            on = ['player_name', 'position', 'season'],
+            injuries[['gsis_id', 'position', 'season', 'ir_games', 'out_games', 'total_missed_games']].drop_duplicates(),
+            left_on = ['player_id', 'position', 'season'],
+            right_on = ['gsis_id', 'position', 'season'],
             how = 'left'   
         )
 
         # Fill NaN with 0 and convert to int
         players_stats['ir_games'] = players_stats['ir_games'].fillna(0).astype(int)
+        players_stats['out_games'] = players_stats['out_games'].fillna(0).astype(int)
+        players_stats['total_missed_games'] = players_stats['total_missed_games'].fillna(0).astype(int)
+        players_stats['games'] = np.where(players_stats['season'] >= 2021, 17, 16)
+        players_stats['games'] = players_stats['games'] - players_stats['total_missed_games']
+
+
 
         print("Importing Next Gen Stats...")
 
         # track next gen stats
         # receiving
-        ngs_receiving = nfl.import_ngs_data('receiving', self.years)
+        ngs_receiving = nfl.load_nextgen_stats([year for year in self.years if year >=2016], 'receiving').to_pandas()
         players_stats = players_stats.merge(
-            ngs_receiving[['player_gsis_id', 'season', 'avg_separation', 'avg_yac_above_expectation', 'catch_percentage']],
+            ngs_receiving[['player_gsis_id', 'season', 'avg_cushion', 'avg_separation', 'percent_share_of_intended_air_yards', 'catch_percentage', 'avg_yac', 'avg_expected_yac', 'avg_yac_above_expectation']],
             left_on=['player_id', 'season'],
             right_on=['player_gsis_id', 'season'],
             how='left'
@@ -64,9 +69,9 @@ class FantasyDataFrame:
 
 
         # rushing
-        ngs_rushing = nfl.import_ngs_data('rushing', self.years)
+        ngs_rushing = nfl.load_nextgen_stats([year for year in self.years if year >=2016], 'rushing').to_pandas()
         players_stats = players_stats.merge(
-            ngs_rushing[['player_gsis_id', 'season', 'rush_yards_over_expected_per_att', 'rush_pct_over_expected']],
+            ngs_rushing[['player_gsis_id', 'season', 'efficiency', 'percent_attempts_gte_eight_defenders', 'avg_time_to_los', 'expected_rush_yards', 'rush_yards_over_expected', 'rush_pct_over_expected', 'rush_yards_over_expected_per_att']],
             left_on=['player_id', 'season'],
             right_on=['player_gsis_id', 'season'],
             how='left'
@@ -74,9 +79,9 @@ class FantasyDataFrame:
                                                                     
 
         # passing
-        ngs_passing = nfl.import_ngs_data('passing', self.years)
+        ngs_passing = nfl.load_nextgen_stats([year for year in self.years if year >=2016], 'passing').to_pandas()
         players_stats = players_stats.merge(
-            ngs_passing[['player_gsis_id', 'season', 'completion_percentage_above_expectation']],
+            ngs_passing[['player_gsis_id', 'season', 'avg_air_distance', 'max_air_distance', 'avg_time_to_throw', 'avg_completed_air_yards', 'avg_intended_air_yards', 'avg_air_yards_differential', 'aggressiveness', 'max_completed_air_distance', 'avg_air_yards_to_sticks', 'passer_rating', 'completion_percentage', 'expected_completion_percentage', 'completion_percentage_above_expectation', 'avg_air_distance', ]],
             left_on=['player_id', 'season'],
             right_on=['player_gsis_id', 'season'],
             how='left'
@@ -90,26 +95,27 @@ class FantasyDataFrame:
         players_stats['yards/carry'] = players_stats['rushing_yards']/players_stats['carries']
         players_stats['rushing_tds/game'] = players_stats['rushing_tds']/players_stats['games']
         players_stats['receiving_tds/game'] = players_stats['receiving_tds']/players_stats['games']
-        players_stats['turnovers/game'] = (players_stats['rushing_fumbles'] + players_stats['sack_fumbles']+players_stats['interceptions'] )/players_stats['games']
+        players_stats['turnovers/game'] = (players_stats['rushing_fumbles'] + players_stats['sack_fumbles']+players_stats['passing_interceptions'] )/players_stats['games']
         players_stats['adot'] = players_stats['passing_air_yards']/players_stats['attempts']
         players_stats['targets_game'] = players_stats['targets']/players_stats['games']
 
         print("Importing seasonal roster data...")
         # import roster data
         # players_stats['team'] = ""
-        rosters = nfl.clean_nfl_data(nfl.import_seasonal_rosters(self.years))
+        #TODO: keep cleaning data from here. also group stats for this model by season and gsis_id
+        rosters = nfl.load_rosters(self.years)
         players_stats = players_stats.merge(
-            rosters[['player_name', 'season', 'position', 'team', 'depth_chart_position', 'height', 'weight', 'years_exp', 'age']],
-            on=['player_name', 'season', 'position'],
+            rosters[['gsis_id', 'season', 'position', 'team', 'depth_chart_position', 'height', 'weight', 'years_exp', 'college', 'status', 'birthdate']],
+            on=['player_gsis_id', 'season', 'position'],
             how='left'
         )
 
         # import position on depth chart
-        depth_charts = nfl.clean_nfl_data(nfl.import_depth_charts(self.years))
+        depth_charts = nfl.load_depth_charts(self.years)
         depth_charts = depth_charts.loc[depth_charts['week']==1.0]
         players_stats = players_stats.merge(
             depth_charts[['gsis_id', 'season', 'depth_team']],
-            left_on = ['player_id', 'season'],
+            left_on = ['player_gsis_id', 'season'],
             right_on= ['gsis_id', 'season'],
             how='left',
             suffixes = ["", '']
@@ -121,7 +127,7 @@ class FantasyDataFrame:
         # will assign win totals based on team column (might need heavy mapping w dicts)
         #https://www.nfeloapp.com/nfl-power-ratings/nfl-win-totals/
         print("Importing Vegas Win Total Lines...")
-        win_totals = pd.read_csv('nfl-win-totals.csv')[['season', 'team', 'Adj. Total']]
+        win_totals = pd.read_csv('nfl-win-totals.csv-2025')[['season', 'team', 'Adj. Total']]
         win_totals['team'] = win_totals['team'].str.strip()
         players_stats['team'] = players_stats['team'].str.strip()
  
@@ -186,7 +192,6 @@ class FantasyDataFrame:
             suffixes = ('', '_future')                                                                                                      
         )
 
-        # create fpts/game metrics (future and current)
         players_stats['future_ppr/game'] = players_stats['fantasy_points_ppr_future']/players_stats['games_future']
         players_stats['future_half_ppr/game'] = players_stats['fantasy_points_half_ppr_future']/players_stats['games_future']
         players_stats['ppr/game'] = players_stats['fantasy_points_ppr']/players_stats['games']
@@ -246,7 +251,7 @@ class FantasyDataFrame:
         df = self.players_stats
         ## map all values in column id to names
         # import df of columns 'id', 'name', 'position'
-        mappings = nfl.import_ids()[['name', 'position', 'gsis_id']]
+        mappings = nfl.load_ff_playerids().to_pandas()[['name', 'position', 'gsis_id']]
         mappings.set_index('gsis_id', inplace=True)
 
         # for dict transformation eliminate duplicate key-value pairs
@@ -264,9 +269,14 @@ class FantasyDataFrame:
         # drop unmapped-id players from df (fantasy defenses, other edgecases)
         df.dropna(subset=['position'], inplace=True)
         self.players_stats = df
+    def convert_to_seasonal(self, inplace=False):
+        if not self.players_stats:
+            return Exception("Player seasonal stats have not been loaded yet!")
 
-fdf = FantasyDataFrame()
+        temp = players_stats.groupby(['gsis_id', 'season']).transform(lambda x: x.sum())
+        if inplace:
+            players_stats = temp
+        else:
+            return temp
 
-fdf.players_stats.to_pickle('fantasy_data.pkl')
 
-fdf.players_stats.to_csv('fantasy_data.csv')

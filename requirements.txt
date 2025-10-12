@@ -3,4 +3,6 @@ numpy
 scikit-learn
 jupyter
 nfl_data_py
+nflreadpy
 pandas
+pyarrow
