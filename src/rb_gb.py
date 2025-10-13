@@ -1,18 +1,15 @@
-# COMMIT EVERY DAY
-#add log statements
 
 import pandas as pd
-from Xgb import Xgb
+from xgb import Xgb
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import IterativeImputer
-from sklearn.ensemble import GradientBoostingRegressor, HistGradientBoostingRegressor
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.feature_selection import SequentialFeatureSelector
 import copy
 import logging
 import os
 
-class Rb_XGBoost(Xgb):
+class Rb_Xgb(Xgb):
     def __init__(self, points_type, hist = True):
         logging.info("Initializing...")
         super().__init__(points_type, hist=hist)
@@ -21,6 +18,7 @@ class Rb_XGBoost(Xgb):
         rb_test = self.X_test
         rb_train[self.label] = self.y_train
         rb_test[self.label] = self.y_test
+        logging.info(list(rb_train.columns))
         rb_train= rb_train.loc[rb_train['position'] == 'RB']
         rb_test= rb_test.loc[rb_test['position'] == 'RB']
 
@@ -36,7 +34,7 @@ class Rb_XGBoost(Xgb):
             self.X_test = imputer.fit_transform(self.X_test)
             self.X_train = imputer.fit_transform(self.X_train)
        
-        super.set_model()
+        self.set_model()
         logging.info("Model is ready to train")
         
     # may pass anything that uses model interface, including sequential feature selector
@@ -81,5 +79,7 @@ class Rb_XGBoost(Xgb):
         
     def cross_validate(self):
         return super().cross_validate()
+    def set_model(self):
+        super().set_model()
         
     

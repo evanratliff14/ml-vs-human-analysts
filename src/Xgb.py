@@ -1,9 +1,12 @@
+from abc import abstractmethod
 from model import Model
-class Xgboost(Model):
+from sklearn.ensemble import GradientBoostingRegressor, HistGradientBoostingRegressor
+
+class Xgb(Model):
     def __init__(self, points_type, hist = True):
-        super.__init__(points_type = points_type)
+        super().__init__(points_type = points_type)
         self.hist = hist
-        
+
     def set_model(self):
         # n estimators is number of trees in the ensemble
         # use max leaf nodes instead of max depth??
@@ -24,3 +27,12 @@ class Xgboost(Model):
                 max_depth=None, min_impurity_decrease=64.0, init=None, random_state=42, max_features=None, alpha=0.9, 
                 verbose=0, max_leaf_nodes=15, warm_start=False, validation_fraction=0.1, n_iter_no_change=None,
                 tol=0.1, ccp_alpha=0.0)
+
+        @abstractmethod
+        def set_features():
+            pass
+        
+        @abstractmethod
+        def train():
+            pass
+        

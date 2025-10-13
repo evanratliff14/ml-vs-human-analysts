@@ -7,6 +7,8 @@ import pyarrow
 import logging
 import gc
 
+from sklearn.externals.array_api_compat.numpy import False_
+
 class FantasyDataFrame:
     def __init__(self, summary_level = 'reg'):
         logging.info('Initializing...')
@@ -351,15 +353,10 @@ class FantasyDataFrame:
                     players_stats[stat_excluding_self] = np.where(denominator > 0, numerator / denominator, np.nan)
 
         logging.info("dropping duplicate columns")
+        logging.info(list(players_stats.columns))
         # transpose for columns --> rows, drop duplicates, then rows --> columns
-        columns = set(list(players_stats.columns))
-        for column in players_stats:
-            if column in columns:
-                columns.remove(column)
-            else:
-                #performs only the needed drop operations putting only the columns in memory at one time + df, memory is O(df)
-                players_stats.drop(columns = [column], axis = 1, inplace = True)
-
+        players_stats = players_stats.drop("avg_air_distance", axis=1, inplace=False)
+        players_stats.to_csv('players_stats.csv')
         self.players_stats = players_stats
 
     def map_ids(self):

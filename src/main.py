@@ -1,5 +1,5 @@
 from fantasy_df import FantasyDataFrame
-from rb_gb import Rb_XGBoost
+from rb_gb import Rb_Xgb
 import logging
 import pyarrow
 import os
@@ -12,7 +12,7 @@ class __main__:
             logging.info("Creating parquet...")
             fdf.players_stats.to_parquet('data.parquet', engine='pyarrow', index=False)
         
-        self.rb_gb = Rb_XGBoost(points_type='half_ppr')
+        self.rb_gb = Rb_Xgb(points_type='half_ppr')
 
     def run(self):
         rb_gb = self.rb_gb
