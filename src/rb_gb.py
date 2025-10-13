@@ -18,9 +18,9 @@ class Rb_Xgb(Xgb):
         rb_test = self.X_test
         rb_train[self.label] = self.y_train
         rb_test[self.label] = self.y_test
-        logging.info(list(rb_train.columns))
         rb_train= rb_train.loc[rb_train['position'] == 'RB']
         rb_test= rb_test.loc[rb_test['position'] == 'RB']
+        rb_train, rb_test = rb_train.drop('position', axis=1, inplace=True), rb_test.drop('position', axis=1, inplace=True)
 
         # Imputation is required for gradient boosting class
         # iterative imputer is a bayesian ridge regression model
@@ -39,7 +39,9 @@ class Rb_Xgb(Xgb):
         
     # may pass anything that uses model interface, including sequential feature selector
     def train_model(self, model):
-        self.model.fit(self.X_train[self.features], self.X_train[self.label])
+        features = self.features
+        features.remove('position')
+        self.model.fit(self.X_train[features], self.X_train[self.label])
 
 
     def test(self):

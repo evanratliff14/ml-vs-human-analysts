@@ -6,13 +6,13 @@ import os
 
 class __main__:
     def __init__(self):
-        if not os.path.isfile('data.parquet'):
+        if not os.path.isfile('players_stats.csv'):
             fdf = FantasyDataFrame()
             self.fdf = fdf
-            logging.info("Creating parquet...")
-            fdf.players_stats.to_parquet('data.parquet', engine='pyarrow', index=False)
+            logging.info("Creating csv...")
+            fdf.players_stats.to_csv('players_stats.csv')
         
-        self.rb_gb = Rb_Xgb(points_type='half_ppr')
+        self.rb_gb = Rb_Xgb(points_type='half_ppr', hist=True)
 
     def run(self):
         rb_gb = self.rb_gb

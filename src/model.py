@@ -12,13 +12,17 @@ import logging
 
 class Model:
     def __init__(self, points_type, **kwargs):
-        logging.info("Reading data from parquet")
-        fantasy_data = pd.read_parquet('data.parquet', engine = "pyarrow")
+        logging.info("Reading data from csv")
+        self.label = f"future_{points_type}/game"
+
+
+        fantasy_data = pd.read_csv('players_stats.csv')
+        fantasy_data.dropna(subset=[self.label], axis=0, inplace=True)
         #refactor for categorical features
         features = [feat for feat in list(fantasy_data.columns) if pd.api.types.is_numeric_dtype(fantasy_data[feat])]
+        features.extend(['position'])
         self.features = features
         logging.info(features)
-        self.label = f"future_{points_type}/game"
         self.eval_data = fantasy_data.loc[fantasy_data['season'] == nfl.get_current_season()-1 ]
         train_test_data = fantasy_data.loc[fantasy_data['season'] < nfl.get_current_season()-1 ]
 
