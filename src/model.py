@@ -1,25 +1,29 @@
-import pickle
 from abc import abstractmethod
 import pandas as pd
 import pickle
-from model import Model
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import IterativeImputer
 from sklearn.ensemble import GradientBoostingRegressor, HistGradientBoostingRegressor
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.feature_selection import SequentialFeatureSelector
+from sklearn.model_selection import train_test_split
 import copy
+import nflreadpy as nfl
+import pyarrow
 
 class Model:
     def __init__(self, points_type):
-        self.train_years = [2003, 2004, 2005, 2006, 2007, 2008, 2009, 1010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019]
-        self.test_years = [2021, 2022, 2023]
-        self.fantasy_data = pd.read_pickle("fantasy_data.pkl")
-        self.features = None
-        self.train_data = None
-        self.test_data = None
-        self.full_data = None
+        fantasy_data = pd.read_parquet('data.parquet', engine = "pyarrow")
+        self.features = (list(fantasy_data.columns))
+        self.label = f"future_{points_type}/game"
+        self.eval_data = fantasy_data.loc[fantasy_data['season' == nfl.get_current_season ]]
+        train_test_data = fantasy_data.loc[fantasy_data['season'] <nfl.get_current_season ]
+
+        # shuffle and stratify to get results that will extrapolate to any year
+        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(train_test_data[self.features], train_test_data[self.label], 
+            test_size=0.2, shuffle = True, stratify=True)
         self.points_type = points_type
+        self.model = None
 
     @abstractmethod
     def train(self):
@@ -27,12 +31,12 @@ class Model:
 
     def cross_validate(self):
         try:
-            self.test_mse = mean_squared_error(self.test_data[self.points_type],self.test_data['predictions'])
-            self.test_mae = mean_absolute_error(self.test_data[self.points_type],self.test_data['predictions'])
-            self.train_mse = mean_squared_error(self.train_data[self.points_type],self.train_data['predictions'])
-            self.train_mae = mean_absolute_error(self.train_data[self.points_type],self.train_data['predictions'])
-        except:
-            print("Error in cross_validate")
+            self.test_mse = mean_squared_error(self.X_test[self.test_data], self.y_test[self.label])
+            self.test_mae = mean_absolute_error(self.X_test[self.points_type],self.y_test[self.label])
+            self.train_mse = mean_squared_error(self.X_train[self.points_type],self.y_train[self.label])
+            self.train_mae = mean_absolute_error(self.X_train[self.points_type],self.y_test[self.label])
+        except Exception as e:
+            print("Error in cross_validate" + str(e))
     
     def __str__(self):
         model_string = "Features: \n"

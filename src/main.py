@@ -1,18 +1,16 @@
 from fantasy_df import FantasyDataFrame
-# from rb_gb import Rb_XGBoost
+from rb_gb import Rb_XGBoost
 import logging
 import pyarrow
+import os
 
 class __main__:
     def __init__(self):
-        try:
+        if not os.path.isfile('data.parquet'):
             fdf = FantasyDataFrame()
             self.fdf = fdf
-
-        except Exception as e:
-            logging.exception(e)
         
-        # self.rb_gb = Rb_XGBoost()
+        self.rb_gb = Rb_XGBoost()
 
     def run(self):
         fdf = self.fdf
