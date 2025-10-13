@@ -10,18 +10,21 @@ from sklearn.model_selection import train_test_split
 import copy
 import nflreadpy as nfl
 import pyarrow
+import logging
 
 class Model:
-    def __init__(self, points_type):
+    def __init__(self, points_type, **kwargs):
+        logging.info("Reading data from parquet")
         fantasy_data = pd.read_parquet('data.parquet', engine = "pyarrow")
         self.features = (list(fantasy_data.columns))
         self.label = f"future_{points_type}/game"
-        self.eval_data = fantasy_data.loc[fantasy_data['season' == nfl.get_current_season ]]
-        train_test_data = fantasy_data.loc[fantasy_data['season'] <nfl.get_current_season ]
+        self.eval_data = fantasy_data.loc[fantasy_data['season'] == nfl.get_current_season() ]
+        train_test_data = fantasy_data.loc[fantasy_data['season'] < nfl.get_current_season() ]
 
+        logging.info("Shuffling and stratifying data for cross validation")
         # shuffle and stratify to get results that will extrapolate to any year
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(train_test_data[self.features], train_test_data[self.label], 
-            test_size=0.2, shuffle = True, stratify=True)
+            test_size=0.2)
         self.points_type = points_type
         self.model = None
 

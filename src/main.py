@@ -9,19 +9,20 @@ class __main__:
         if not os.path.isfile('data.parquet'):
             fdf = FantasyDataFrame()
             self.fdf = fdf
-        
-        self.rb_gb = Rb_XGBoost()
-
-    def run(self):
-        fdf = self.fdf
-        if self.fdf:
             logging.info("Creating parquet...")
             fdf.players_stats.to_parquet('data.parquet', engine='pyarrow', index=False)
-        else:
-            logging.exception("fdf does not exist")
-
-
         
+        self.rb_gb = Rb_XGBoost(points_type='half_ppr')
+
+    def run(self):
+        rb_gb = self.rb_gb
+        
+        
+        rb_gb.set_features()
+        rb_gb.train(rb_gb.model)
+        rb_gb.test()
+        print(rb_gb)
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
