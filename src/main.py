@@ -1,27 +1,27 @@
 from fantasy_df import FantasyDataFrame
-from rb_gb import Rb_Xgb
+from xgb import Xgb
 import logging
 import pyarrow
 import os
 
 class __main__:
     def __init__(self):
-        if not os.path.isfile('players_stats.csv'):
+        if not os.path.isfile('data.parquet'):
             fdf = FantasyDataFrame()
             self.fdf = fdf
-            logging.info("Creating csv...")
-            fdf.players_stats.to_csv('players_stats.csv')
+            logging.info("Creating parquet...")
+            fdf.players_stats.to_parquet('data.parquet')
         
-        self.rb_gb = Rb_Xgb(points_type='half_ppr', hist=True)
+        self.rb_xgb = Xgb(points_type='half_ppr', position = 'RB', type = 'xgb')
 
     def run(self):
-        rb_gb = self.rb_gb
+        rb_xgb = self.rb_xgb
         
         
-        rb_gb.set_features()
-        rb_gb.train(rb_gb.model)
-        rb_gb.test()
-        print(rb_gb)
+        rb_xgb.set_features()
+        rb_xgb.train(rb_xgb.model)
+        rb_xgb.test()
+        print(rb_xgb)
 
 
 if __name__ == '__main__':

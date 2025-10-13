@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from re import S
 import pandas as pd
 import pickle
 from sklearn.experimental import enable_iterative_imputer
@@ -12,17 +13,19 @@ import logging
 
 class Model:
     def __init__(self, points_type, **kwargs):
-        logging.info("Reading data from csv")
+        logging.info("Reading data from parquet")
         self.label = f"future_{points_type}/game"
 
 
-        fantasy_data = pd.read_csv('players_stats.csv')
+        fantasy_data = pd.read_parquet('data.parquet')
         fantasy_data.dropna(subset=[self.label], axis=0, inplace=True)
+
         #refactor for categorical features
         features = [feat for feat in list(fantasy_data.columns) if pd.api.types.is_numeric_dtype(fantasy_data[feat])]
-        features.extend(['position'])
-        self.features = features
-        logging.info(features)
+        features.append('position')
+        features = features
+        logging.info(f"Total numeric columns and position {features}")
+
         self.eval_data = fantasy_data.loc[fantasy_data['season'] == nfl.get_current_season()-1 ]
         train_test_data = fantasy_data.loc[fantasy_data['season'] < nfl.get_current_season()-1 ]
 
@@ -30,16 +33,24 @@ class Model:
         # shuffle and stratify to get results that will extrapolate to any year
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(train_test_data[features].drop(self.label, inplace=False, axis=1), train_test_data[self.label], 
             test_size=0.2)
+
+        # prevent set_features from cheating during feature selection
+        self.X_train.drop(labels=[col for col in self.X_train.columns if 'future' in col.lower()], axis=1, inplace=True)
+        self.X_test.drop(labels=[col for col in self.X_test.columns if 'future' in col.lower()],axis=1, inplace=True)
+
+        features = [col for col in features if 'future' not in col.lower()]
+        self.features = features
+
         self.points_type = points_type
         self.model = None
 
     @abstractmethod
-    def train(self):
+    def train(self, model):
         pass
 
     def cross_validate(self):
         try:
-            self.test_mse = mean_squared_error(self.X_test['predictions'], self.y_test[self.label])
+            self.test_mse = measn_squared_error(self.X_test['predictions'], self.y_test[self.label])
             self.test_mae = mean_absolute_error(self.X_test['predictions'],self.y_test[self.label])
             self.train_mse = mean_squared_error(self.X_train['predictions'],self.y_train[self.label])
             self.train_mae = mean_absolute_error(self.X_train['predictions'],self.y_test[self.label])
