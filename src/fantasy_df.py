@@ -21,23 +21,29 @@ class FantasyDataFrame:
         # use players_stats as base file
         players_stats = nfl.load_player_stats(self.years, self.summary_level).to_pandas()
         players_stats = players_stats[players_stats['season_type']=='REG']
+        players_stats=players_stats.drop_duplicates(subset = ['player_id', 'position', 'season'])
+
         logging.info(f"Number of rows: {players_stats.shape[0]}")
         
         self.players_stats = players_stats
         self.map_ids()
+        players_stats = self.players_stats
+        logging.info(f"Number of rows: {players_stats.shape[0]}")
+
         # create custom stats
         players_stats['fantasy_points_standard'] = players_stats['fantasy_points_ppr']-(players_stats['receptions']*1)
         players_stats['fantasy_points_half_ppr'] = players_stats['fantasy_points_ppr']-(players_stats['receptions']*0.5)
-        
-        # track games played and games missed on IR
-        injuries = nfl.load_injuries([year for year in self.years if year >=2009])[['gsis_id', 'season', 'week','report_status', 'position']].to_pandas()
-
-        # count games on ir and games played
-        injuries['ir_games'] = injuries.groupby(['gsis_id', 'position', 'season'])['report_status'].transform(lambda x: (x == 'RES').sum())
-        injuries['out_games'] = injuries.groupby(['gsis_id', 'position', 'season'])['report_status'].transform(lambda x: (x == 'INA').sum())
-        injuries['total_missed_games'] = injuries['out_games'] + injuries['ir_games']
 
         logging.info('Importing games spent on IR...')
+
+        # track games played and games missed on IR
+        injuries = nfl.load_injuries(self.years)[['gsis_id', 'season', 'week','report_status', 'position']].to_pandas()
+
+        # count games on ir and games played
+        injuries['ir_games'] = injuries.groupby(['gsis_id', 'season', 'report_status'])['report_status'].transform(lambda x: (x == 'RES')).sum()
+        injuries['out_games'] = injuries.groupby(['gsis_id','season', 'report_status'])['report_status'].transform(lambda x: (x == 'INA')).sum()
+        injuries['total_missed_games'] = injuries['out_games'] + injuries['ir_games']
+        injuries.drop_duplicates(subset = ['gsis_id', 'season'], inplace=True)
 
         players_stats = players_stats.merge(
             injuries[['gsis_id', 'position', 'season', 'ir_games', 'out_games', 'total_missed_games']],
@@ -45,6 +51,9 @@ class FantasyDataFrame:
             right_on = ['gsis_id', 'position', 'season'],
             how = 'left'   
         )
+
+        logging.info(f"Number of rows: {players_stats.shape[0]}")
+
 
         del injuries
         gc.collect()
@@ -62,6 +71,7 @@ class FantasyDataFrame:
         # track next gen stats
         # receiving
         ngs_receiving = nfl.load_nextgen_stats([year for year in self.years if year >=2016], 'receiving').to_pandas()
+        ngs_receiving.drop_duplicates(subset=['player_gsis_id', 'season'], inplace=True)
         players_stats = players_stats.merge(
             ngs_receiving[['player_gsis_id', 'season', 'avg_cushion', 'avg_separation', 'percent_share_of_intended_air_yards', 'catch_percentage', 'avg_yac', 'avg_expected_yac', 'avg_yac_above_expectation']],
             left_on=['player_id', 'season'],
@@ -71,10 +81,13 @@ class FantasyDataFrame:
 
         del ngs_receiving
         gc.collect()
+        logging.info(f"Number of rows: {players_stats.shape[0]}")
+
 
 
         # rushing
         ngs_rushing = nfl.load_nextgen_stats([year for year in self.years if year >=2016], 'rushing').to_pandas()
+        ngs_rushing.drop_duplicates(subset=['player_gsis_id', 'season'], inplace=True)
         players_stats = players_stats.merge(
             ngs_rushing[['player_gsis_id', 'season', 'efficiency', 'percent_attempts_gte_eight_defenders', 'avg_time_to_los', 'expected_rush_yards', 'rush_yards_over_expected', 'rush_pct_over_expected', 'rush_yards_over_expected_per_att']],
             left_on=['player_id', 'season'],
@@ -87,6 +100,8 @@ class FantasyDataFrame:
 
         # passing
         ngs_passing = nfl.load_nextgen_stats([year for year in self.years if year >=2016], 'passing').to_pandas()
+        ngs_passing.drop_duplicates(subset=['player_gsis_id', 'season'], inplace=True)
+
         players_stats = players_stats.merge(
             ngs_passing[['player_gsis_id', 'season', 'avg_air_distance', 'max_air_distance', 'avg_time_to_throw', 'avg_completed_air_yards', 'avg_intended_air_yards', 'avg_air_yards_differential', 'aggressiveness', 'max_completed_air_distance', 'avg_air_yards_to_sticks', 'passer_rating', 'completion_percentage', 'expected_completion_percentage', 'completion_percentage_above_expectation', 'avg_air_distance', ]],
             left_on=['player_id', 'season'],
@@ -113,12 +128,16 @@ class FantasyDataFrame:
         # players_stats['team'] = ""
         #TODO: keep cleaning data from here. also group stats for this model by season and gsis_id
         rosters = nfl.load_rosters(self.years).to_pandas()
+        rosters.drop_duplicates(subset=['gsis_id', 'season'], inplace=True)
         players_stats = players_stats.merge(
             rosters[['gsis_id', 'season', 'height', 'weight', 'college', 'status', 'years_exp']],
             left_on=['player_id', 'season'],
             right_on=['gsis_id', 'season'],
             how='left'
         )
+
+        logging.info(f"Number of rows: {players_stats.shape[0]}")
+
 
         del rosters
 
@@ -154,13 +173,17 @@ class FantasyDataFrame:
 
         win_totals['Team'] = win_totals['Team'].str.strip()
         # players_stats['team'] = players_stats['team'].str.strip()
- 
+        win_totals.drop_duplicates(subset=['Team', 'Season'], inplace=True)
+
         players_stats = players_stats.merge(
             win_totals[['Team', 'Season', 'Adj. Total']],
             left_on=['team', 'season'],
             right_on =['Team', 'Season'],
             how='left'
         ).rename(columns={'Adj. Total': 'win_total_adj_line'})
+
+        logging.info(f"Number of rows: {players_stats.shape[0]}")
+
 
         del win_totals
         gc.collect()
@@ -172,6 +195,9 @@ class FantasyDataFrame:
 
         draft_picks['draft_age'] = draft_picks['age']
         draft_picks['career_games'] = draft_picks['games']
+
+        draft_picks.drop_duplicates(subset=['gsis_id'], inplace=True)
+
         # Merge draft_picks into players_stats based on the player_id and gsis_id columns
         players_stats = players_stats.merge(
             draft_picks[['gsis_id', 'pick', 'allpro', 'draft_age', 'w_av', 'car_av', 'dr_av', 'career_games']], 
@@ -192,7 +218,9 @@ class FantasyDataFrame:
         combine = combine.rename(columns={'pos': 'position'})
         combine['player_name'] = combine['player_name'].str.strip()
         combine['position'] = combine['position'].str.strip()
-        # use vectorized operations for faster mapping
+        combine.drop_duplicates(subset=['player_name', 'position', 'draft_ovr'], inplace=True)
+
+
         players_stats = players_stats.merge(
             combine[['player_name', 'position', 'draft_ovr', 'forty', 'bench', 'vertical', 'broad_jump', 'cone', 'shuttle']], 
             left_on = ['player_name', 'position', 'pick'],
@@ -298,6 +326,7 @@ class FantasyDataFrame:
         # add one at a time for memory constraint reasons
         for i, df in enumerate(team_agg_list):
             logging.info(f"Merging df #{i} {df.shape[0]}")
+            df.drop_duplicates(subset = ['season','team'], inplace=True)
             players_stats = players_stats.merge(df, on=['season','team'], how='left')
 
         logging.info("Computing self-exclusive team quality statistics for all players")
