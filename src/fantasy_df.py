@@ -5,6 +5,7 @@ import pickle
 from datetime import datetime
 import pyarrow
 import logging
+import gc
 
 class FantasyDataFrame:
     def __init__(self, summary_level = 'reg'):
@@ -20,7 +21,7 @@ class FantasyDataFrame:
         # use players_stats as base file
         players_stats = nfl.load_player_stats(self.years, self.summary_level).to_pandas()
         players_stats = players_stats[players_stats['season_type']=='REG']
-        logging.info(players_stats.head)
+        logging.info(f"Number of rows: {players_stats.shape[0]}")
         
         self.players_stats = players_stats
         self.map_ids()
@@ -45,6 +46,9 @@ class FantasyDataFrame:
             how = 'left'   
         )
 
+        del injuries
+        gc.collect()
+
         # Fill NaN with 0 and convert to int
         players_stats['ir_games'] = players_stats['ir_games'].fillna(0).astype(int)
         players_stats['out_games'] = players_stats['out_games'].fillna(0).astype(int)
@@ -65,6 +69,9 @@ class FantasyDataFrame:
             how='left'
         ).drop(columns=['player_gsis_id'])
 
+        del ngs_receiving
+        gc.collect()
+
 
         # rushing
         ngs_rushing = nfl.load_nextgen_stats([year for year in self.years if year >=2016], 'rushing').to_pandas()
@@ -74,7 +81,9 @@ class FantasyDataFrame:
             right_on=['player_gsis_id', 'season'],
             how='left'
         )
-                                                                    
+
+        del ngs_rushing
+        gc.collect()
 
         # passing
         ngs_passing = nfl.load_nextgen_stats([year for year in self.years if year >=2016], 'passing').to_pandas()
@@ -85,6 +94,8 @@ class FantasyDataFrame:
             how='left'
         )
 
+        del ngs_passing
+        gc.collect()
 
         # create per-___ stats
         players_stats['pass_tds/game'] = players_stats['passing_tds']/players_stats['games']
@@ -108,6 +119,10 @@ class FantasyDataFrame:
             right_on=['gsis_id', 'season'],
             how='left'
         )
+
+        del rosters
+
+        gc.collect()
 
         # schedule = nfl.load_schedule(self.years).to_pandas()
 
@@ -147,6 +162,9 @@ class FantasyDataFrame:
             how='left'
         ).rename(columns={'Adj. Total': 'win_total_adj_line'})
 
+        del win_totals
+        gc.collect()
+
         ## rookies
         logging.info("Importing draft data...")
         # import rec_yards, rec_tds, etc. college production
@@ -163,6 +181,9 @@ class FantasyDataFrame:
         )
         players_stats['age'] = players_stats['draft_age'] + players_stats['years_exp']
 
+        del draft_picks
+        gc.collect()
+
         logging.info("Importing combine data...")
 
         # get combine stats: for RBs, WRs, TEs, and map by player_name and pos
@@ -178,6 +199,9 @@ class FantasyDataFrame:
             right_on=['player_name', 'position','draft_ovr' ], 
             how='left'
         )
+
+        del combine
+        gc.collect()
 
         logging.info('Removing duplicate columns')
         ## TODO: support wopr_x, wopr_y
@@ -226,8 +250,8 @@ class FantasyDataFrame:
             },
             'team_wrs': {
                 'sum_cols': ['receiving_tds','air_yards_share'],
-                'mean_cols': ['avg_cushion', 'avg_separation', 'avg_yac_above_expectation', 'wopr', 'catch_percentage', 
-                            'height', 'receiving_epa', 'rushing_epa', 'pick'],
+                'mean_cols': ['avg_cushion', 'avg_separation', 'avg_yac_above_expectation','catch_percentage', 
+                            'height', 'receiving_epa', 'pick'],
                 'position_filter': 'WR'
             },
             'team_rbs': {
@@ -239,7 +263,7 @@ class FantasyDataFrame:
             },
             'team_tes': {
                 'sum_cols': ['receiving_tds', 'receiving_yards', 'air_yards_share'],
-                'mean_cols': ['catch_percentage', 'wopr', 'height', 'percent_share_of_intended_air_yards', 'receiving_epa'],
+                'mean_cols': ['catch_percentage', 'wopr', 'percent_share_of_intended_air_yards', 'receiving_epa'],
                 'position_filter': 'TE'
             }
         }
@@ -257,6 +281,7 @@ class FantasyDataFrame:
         # --- 3. Pre-filter DataFrame ---
         logging.info("Dropping np.NaN rows")
         players_stats = players_stats.dropna(subset=['position', 'season'])
+        logging.info(f"Number of rows: {players_stats.shape[0]}")
 
         # --- 4. Aggregate all positions ---
         logging.info("Aggregating all positional team_aggs - perform .loc, build aggregation dict, and .groupby team and season")
@@ -268,15 +293,12 @@ class FantasyDataFrame:
             team_agg = df_pos.groupby(['season','team']).agg(**agg_dict).reset_index()
             team_agg_list.append(team_agg)
 
-        # Merge all position aggregates into a single DataFrame
-        logging.info("Merging team aggs unto one another")
-        team_agg_full = team_agg_list[0]
-        for df_agg in team_agg_list[1:]:
-            team_agg_full = team_agg_full.merge(df_agg, on=['season','team'], how='outer')
-
         # Merge back into players_stats once
         logging.info("Merging team aggs into players_stats")
-        players_stats = players_stats.merge(team_agg_full, on=['season','team'], how='left')
+        # add one at a time for memory constraint reasons
+        for i, df in enumerate(team_agg_list):
+            logging.info(f"Merging df #{i} {df.shape[0]}")
+            players_stats = players_stats.merge(df, on=['season','team'], how='left')
 
         logging.info("Computing self-exclusive team quality statistics for all players")
         for team_suffix, position_stats in position_config.items():
@@ -308,7 +330,6 @@ class FantasyDataFrame:
             else:
                 #performs only the needed drop operations putting only the columns in memory at one time + df, memory is O(df)
                 players_stats.drop(columns = [column], axis = 1, inplace = True)
-
 
         self.players_stats = players_stats
 
