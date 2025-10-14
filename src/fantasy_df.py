@@ -331,7 +331,8 @@ class FantasyDataFrame:
             logging.info(f"Merging df #{i} {df.shape[0]}")
             df.drop_duplicates(subset = ['season','team'], inplace=True)
             # merge onto future team in order to have up to date contexual data for every player
-            players_stats = players_stats.merge(df, left_on=['next_season_future','team_future'], right_on = ['season', 'team'], how='left')
+            # players_stats = players_stats.merge(df, left_on=['next_season_future','team_future'], right_on = ['season', 'team'], how='left')
+            players_stats = players_stats.merge(df, on= ['season', 'team'], how='left')
 
         logging.info("Computing self-exclusive team quality statistics for all players")
         for team_suffix, position_stats in position_config.items():
@@ -357,7 +358,12 @@ class FantasyDataFrame:
         logging.info("dropping duplicate columns")
         logging.info(list(players_stats.columns))
         # transpose for columns --> rows, drop duplicates, then rows --> columns
-        players_stats = players_stats.drop("avg_air_distance", axis=1, inplace=False)
+        columns = set(list(players_stats.columns))
+        for col in list(players_stats.columns):
+            if col in columns:
+                columns.remove(col)
+            else:
+                players_stats.drop(col, axis = 1, inplace=True)
         
         players_stats.to_csv('players_stats.csv')
         

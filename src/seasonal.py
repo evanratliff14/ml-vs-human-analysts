@@ -9,6 +9,7 @@ from sklearn.feature_selection import SequentialFeatureSelector
 import copy
 import logging
 import os
+import joblib
 
 class Seasonal(Model):
     def __init__(self, points_type, position, type = 'xgb'):
@@ -66,40 +67,59 @@ class Seasonal(Model):
             # can insert 'college' into categorical features
             self.model = HistGradientBoostingRegressor(loss='squared_error', quantile=None,
                 learning_rate=0.1, max_iter=100, max_leaf_nodes=31, max_depth=None, min_samples_leaf=20, 
-                l2_regularization=0.0, max_features=1.0, max_bins=255, categorical_features='from_dtype', 
+                l2_regularization=0.0, max_features=10, max_bins=255, categorical_features='from_dtype', 
                 monotonic_cst=None, interaction_cst=None, warm_start=False, early_stopping='auto', scoring='loss', 
                 validation_fraction=0.1, n_iter_no_change=10, tol=0.1, verbose=0, random_state=42)
         elif type == 'xgb':
-            self.model = GradientBoostingRegressor(loss='squared_error', learning_rate=0.1, n_estimators=100,
+            self.model = GradientBoostingRegressor(loss='squared_error', learning_rate=0.1, n_estimators=350,
                 criterion='friedman_mse', min_samples_split=250, min_samples_leaf=1, min_weight_fraction_leaf=0.0,
-                max_depth=None, min_impurity_decrease=64.0, init=None, random_state=42, max_features=20, alpha=0.9, 
+                max_depth=5, min_impurity_decrease=64.0, init=None, random_state=42, max_features=20, alpha=0.9, 
                 verbose=0, max_leaf_nodes=15, warm_start=False, validation_fraction=0.1, n_iter_no_change=None,
                 tol=0.1, ccp_alpha=0.0)
 
     # may pass anything that uses model interface, including sequential feature selector
     def train_model(self, model, features = None):
+        logging.info("Training model")
         if features is None:
             features = self.features
-
-        if 'position' in features:
-            features.remove('position')
+        
+        # remove categorical identifiers
+        features = [f for f in features if f not in self.categorical_identifiers]
 
         model.fit(self.train[features], self.train[self.label])
+        joblib.dump(model, f"{self.position}_{self.type}.joblib")
         self.model = model
+        logging.info("Training complete")
 
 
     def test_model(self, features=None):
+        logging.info("Testing model...")
         if features is None:
             features = self.features
+
+        features = [f for f in features if f not in self.categorical_identifiers]
+
         # staged predict: returns each stage of the prediction of the test set, vs just the final
-        self.train['predictions'] = self.model.predict(self.train[self.features])
-        self.test['predictions'] = self.model.predict(self.test[self.features])
+        self.train['predictions'] = self.model.predict(self.train[features])
+        self.test['predictions'] = self.model.predict(self.test[features])
+
+        #re-add categorical features into the mix
+        self.train[list(self.categorical_identifiers)] = self.X_train[list(self.categorical_identifiers)]
+        self.test[list(self.categorical_identifiers)] = self.X_test[list(self.categorical_identifiers)]
                 
         stage_errors = []
-        for i, y_pred_stage in enumerate(self.model.staged_predict(self.test[self.features])):
+        for i, y_pred_stage in enumerate(self.model.staged_predict(self.test[features])):
             mse = mean_squared_error(self.test[self.label], y_pred_stage)
             stage_errors.append(mse)
             logging.info(f"Iteration {i+1}: MSE = {mse}")
+        
+        self.test.to_csv(f"{self.position}_test.csv")
+
+        # eval = self.eval_data.copy()
+        # eval['predictions'] = self.model.predict(eval[features])
+        # eval.to_csv()
+        # mse = mean_squared_error(eval[self.label], eval['predictions'])
+        # logging.info(f"2025 evaluation MSE: {mse}")
 
     def set_features(self):
         logging.info("Setting features...")
@@ -127,8 +147,17 @@ class Seasonal(Model):
         model_string = "Features: \n"
         model_string = model_string + str(self.features) + "\n"
         # intentional side effect
-        print(self.test[['player_name', 'predictions',self.points_type, 'season']])
-        self.test[['player_name', 'predictions', self.points_type, 'season']].to_csv('predictions.csv')
+        logging.info(self.test[['player_name', 'predictions', 'season']])
+        display = self.test[['player_name', 'predictions', 'season']].sort_values(
+            by=['predictions'],
+            ascending = False  # descending predictions, ascending season
+        )       
+        display = display.sort_values(
+            by=['season'],
+            ascending = True  # descending predictions, ascending season
+        )  
+        
+        display.to_csv('predictions.csv')
         self.cross_validate()
         model_string += "Test MSE: " + str(self.test_mse) + "\n"
         model_string += "Test MAE: " + str(self.test_mae) + "\n"

@@ -15,7 +15,7 @@ class Model:
     def __init__(self, points_type, **kwargs):
         logging.info("Reading data from parquet")
         self.label = f"future_{points_type}/game"
-
+        self.categorical_identifiers = ('season', 'team', 'position', 'player_name')
 
         fantasy_data = pd.read_parquet('data.parquet')
         self.fantasy_data = fantasy_data
@@ -26,8 +26,7 @@ class Model:
         fantasy_data = fantasy_data.dropna(axis=1, thresh=len(fantasy_data) * (1 - threshold))
 
         #refactor for categorical features
-        features = [feat for feat in list(fantasy_data.columns) if pd.api.types.is_numeric_dtype(fantasy_data[feat])]
-        features.append('position')
+        features = [feat for feat in list(fantasy_data.columns) if pd.api.types.is_numeric_dtype(fantasy_data[feat]) or feat in self.categorical_identifiers]
         features = features
         logging.info(f"Total numeric columns and position {features}")
 
@@ -39,7 +38,7 @@ class Model:
 
         logging.info("Preparing data for cross validation")
         # shuffle and stratify to get results that will extrapolate to any year
-        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(train_test_data[features].drop(self.label, inplace=False, axis=1), train_test_data[self.label], 
+        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(train_test_data[features].drop(columns=self.label, inplace=False, axis=1), train_test_data[self.label], 
             test_size=test_size)
 
         # prevent set_features from cheating during feature selection
@@ -66,10 +65,10 @@ class Model:
 
     def cross_validate(self):
         try:
-            self.test_mse = mean_squared_error(self.X_test['predictions'], self.y_test[self.label])
-            self.test_mae = mean_absolute_error(self.X_test['predictions'],self.y_test[self.label])
-            self.train_mse = mean_squared_error(self.X_train['predictions'],self.y_train[self.label])
-            self.train_mae = mean_absolute_error(self.X_train['predictions'],self.y_test[self.label])
+            self.test_mse = mean_squared_error(self.test['predictions'], self.train[self.label])
+            self.test_mae = mean_absolute_error(self.test['predictions'],self.train[self.label])
+            self.train_mse = mean_squared_error(self.train['predictions'],self.train[self.label])
+            self.train_mae = mean_absolute_error(self.train['predictions'],self.train[self.label])
         except Exception as e:
             print("Error in cross_validate" + str(e))
     
