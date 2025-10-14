@@ -26,6 +26,10 @@ class Seasonal(Model):
         train.drop('position', axis=1, inplace=True)
         test.drop('position', axis=1, inplace=True)
 
+        train.to_csv('train.csv')
+        test.to_csv('test.csv')
+        self.eval_data.to_csv('eval.csv')
+
 
         # Imputation is required for gradient boosting class
         # iterative imputer is a bayesian ridge regression model

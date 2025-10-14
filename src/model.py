@@ -22,11 +22,11 @@ class Model:
 
         #clean data at this step - we don't want to call fantasy_df too many times to clean data
         fantasy_data.dropna(subset=[self.label], axis=0, inplace=True)
-        threshold = 0.5
+        threshold = 0.3
         fantasy_data = fantasy_data.dropna(axis=1, thresh=len(fantasy_data) * (1 - threshold))
 
         #refactor for categorical features
-        features = [feat for feat in list(fantasy_data.columns) if pd.api.types.is_numeric_dtype(fantasy_data[feat]) or feat in self.categorical_identifiers]
+        features = [feat for feat in list(fantasy_data.columns) if (pd.api.types.is_numeric_dtype(fantasy_data[feat]) or feat in self.categorical_identifiers)]
         features = features
         logging.info(f"Total numeric columns and position {features}")
 
@@ -46,6 +46,8 @@ class Model:
         self.X_test.drop(labels=[col for col in self.X_test.columns if 'future' in col.lower()],axis=1, inplace=True)
 
         features = [col for col in features if 'future' not in col.lower()]
+
+        # should have categorical idenifiers, sparse vars, and lack future vars
         self.features = features
         
         #init - these are the names seasonal uses, the vars that __str__ calls
