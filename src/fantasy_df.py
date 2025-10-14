@@ -7,6 +7,7 @@ import pyarrow
 import logging
 import gc
 
+from scipy.linalg import dft
 from sklearn.externals.array_api_compat.numpy import False_
 
 class FantasyDataFrame:
@@ -329,7 +330,8 @@ class FantasyDataFrame:
         for i, df in enumerate(team_agg_list):
             logging.info(f"Merging df #{i} {df.shape[0]}")
             df.drop_duplicates(subset = ['season','team'], inplace=True)
-            players_stats = players_stats.merge(df, on=['season','team'], how='left')
+            # merge onto future team in order to have up to date contexual data for every player
+            players_stats = players_stats.merge(df, left_on=['next_season_future','team_future'], right_on = ['season', 'team'], how='left')
 
         logging.info("Computing self-exclusive team quality statistics for all players")
         for team_suffix, position_stats in position_config.items():
@@ -356,7 +358,9 @@ class FantasyDataFrame:
         logging.info(list(players_stats.columns))
         # transpose for columns --> rows, drop duplicates, then rows --> columns
         players_stats = players_stats.drop("avg_air_distance", axis=1, inplace=False)
+        
         players_stats.to_csv('players_stats.csv')
+        
         self.players_stats = players_stats
 
     def map_ids(self):

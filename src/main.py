@@ -1,5 +1,5 @@
 from fantasy_df import FantasyDataFrame
-from xgb import Xgb
+from seasonal import Seasonal
 import logging
 import pyarrow
 import os
@@ -12,16 +12,26 @@ class __main__:
             logging.info("Creating parquet...")
             fdf.players_stats.to_parquet('data.parquet')
         
-        self.rb_xgb = Xgb(points_type='half_ppr', position = 'RB', type = 'xgb')
+        self.rb_seasonal = Seasonal(points_type='half_ppr', position = 'RB', type = 'xgb')
 
     def run(self):
-        rb_xgb = self.rb_xgb
-        
-        
-        rb_xgb.set_features()
-        rb_xgb.train(rb_xgb.model)
-        rb_xgb.test()
-        print(rb_xgb)
+        rb_seasonal = self.rb_seasonal
+        rb_seasonal.corr()
+
+        import seaborn as sns
+        import matplotlib.pyplot as plt
+
+        plt.figure(figsize=(20, 10))  # width, height in inches
+
+        sns.heatmap(rb_seasonal.fantasy_data.corr(numeric_only=True).abs(), cmap='coolwarm')
+        plt.savefig('corr_plot.png')
+        plt.show()
+
+        # only outputting standard/game right now
+        # rb_seasonal.set_features()
+        rb_seasonal.train_model(rb_seasonal.model)
+        rb_seasonal.test_model()
+        print(rb_seasonal)
 
 
 if __name__ == '__main__':
