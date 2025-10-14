@@ -136,8 +136,6 @@ class Seasonal(Model):
             stage_errors.append(mse)
             logging.info(f"Iteration {i+1}: MSE = {mse}")
         
-        # mse = mean_squared_error(self.eval_data[self.label], self.eval_data['predictions'])
-        # logging.info(f"2025 evaluation MSE: {mse}")
 
     def set_features(self):
         logging.info("Setting features...")
@@ -173,12 +171,12 @@ class Seasonal(Model):
         # intentional side effect
         logging.info(self.test[['player_name', 'predictions', 'season']])
         display = self.test[['player_name', 'predictions', 'season']].sort_values(
-            by=['predictions'],
+            by='predictions',
             ascending = True,
             inplace=False  # descending predictions, ascending season
         )       
         display = display.sort_values(
-            by=['season'],
+            by='season',
             ascending = True,
             inplace=False  # descending predictions, ascending season
         )  
@@ -189,6 +187,8 @@ class Seasonal(Model):
         model_string += "Test MAE: " + str(self.test_mae) + "\n"
         model_string += "Train MSE: " + str(self.train_mse) + "\n"
         model_string += "Test MSE: " + str(self.train_mae) + "\n"
+
+
         return model_string
 
         

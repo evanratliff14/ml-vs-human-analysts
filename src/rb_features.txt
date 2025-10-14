@@ -19,7 +19,6 @@ target_share
 air_yards_share
 wopr
 penalties
-total_missed_games
 carries/game
 rushing_tds/game
 receiving_tds/game
