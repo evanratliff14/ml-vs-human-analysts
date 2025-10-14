@@ -20,16 +20,10 @@ class Seasonal(Model):
 
         train = self.X_train
         test= self.X_test
-        train[self.label] = self.y_train
-        test[self.label] = self.y_test
+        
         train, test= train.loc[train['position'] == position], test.loc[test['position'] == position]
         train.drop('position', axis=1, inplace=True)
         test.drop('position', axis=1, inplace=True)
-
-        train.to_csv('train.csv')
-        test.to_csv('test.csv')
-        self.eval_data.to_csv('eval.csv')
-
 
         # Imputation is required for gradient boosting class
         # iterative imputer is a bayesian ridge regression model
@@ -47,11 +41,23 @@ class Seasonal(Model):
                 initial_strategy='median', random_state=42, 
                 add_indicator=False)
             imputer.set_output(transform = 'pandas')
-            test = imputer.fit_transform(test)
-            train = imputer.fit_transform(train)
 
-            test.to_parquet('test.parquet')
-            train.to_parquet('train.parquet')
+            numeric = [feat for feat in self.features if feat not in self.categorical_identifiers]
+            
+            # Fit on train numeric only
+            imputer.fit(train[numeric])
+
+            # Transform both (use .loc to avoid accidental reindexing)
+            train.loc[:, numeric] = imputer.transform(train[numeric])
+            test.loc[:, numeric]  = imputer.transform(test[numeric])
+
+            # restore labels if needed (make sure y_train/y_test align in index)
+            train[self.label] = self.y_train
+            test[self.label]  = self.y_test
+
+            # Save parquets without the pandas index column
+            train.to_parquet('train.parquet', index=False)
+            test.to_parquet('test.parquet', index=False)
             
     
         self.train = train
@@ -117,11 +123,11 @@ class Seasonal(Model):
             stage_errors.append(mse)
             logging.info(f"Iteration {i+1}: MSE = {mse}")
         
-        self.test.to_csv(f"{self.position}_test.csv")
+        self.test.to_parquet(f"{self.position}_test.parquet")
 
         # eval = self.eval_data.copy()
         # eval['predictions'] = self.model.predict(eval[features])
-        # eval.to_csv()
+        # eval.to_parquet()
         # mse = mean_squared_error(eval[self.label], eval['predictions'])
         # logging.info(f"2025 evaluation MSE: {mse}")
 
@@ -161,12 +167,12 @@ class Seasonal(Model):
             ascending = True  # descending predictions, ascending season
         )  
         
-        display.to_csv('predictions.csv')
+        display.to_parquet('predictions.parquet')
         self.cross_validate()
-        model_string += "Test MSE: " + str(self.test_mse) + "\n"
-        model_string += "Test MAE: " + str(self.test_mae) + "\n"
-        model_string += "Train MSE: " + str(self.train_mse) + "\n"
-        model_string += "Test MSE: " + str(self.train_mae) + "\n"
+        model_string += "Test MSE: " + str(super.test_mse) + "\n"
+        model_string += "Test MAE: " + str(super.test_mae) + "\n"
+        model_string += "Train MSE: " + str(super.train_mse) + "\n"
+        model_string += "Test MSE: " + str(super.train_mae) + "\n"
         return model_string
 
         

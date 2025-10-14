@@ -31,8 +31,8 @@ class __main__:
         # rb_seasonal.set_features()
         rb_seasonal.train_model(rb_seasonal.model)
         rb_seasonal.test_model()
-        # rb_seasonal.cross_validate()
-        # print(rb_seasonal)
+        rb_seasonal.cross_validate()
+        print(rb_seasonal)
 
 
 if __name__ == '__main__':
