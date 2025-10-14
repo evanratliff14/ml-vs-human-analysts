@@ -38,32 +38,38 @@ class FantasyDataFrame:
         players_stats['fantasy_points_half_ppr'] = players_stats['fantasy_points_ppr']-(players_stats['receptions']*0.5)
 
         logging.info('Importing games spent on IR...')
-        # track games played and games missed on IR
-        injuries = nfl.load_injuries(self.years[0:-1])[['gsis_id', 'season', 'week','report_status', 'position']].to_pandas()
+        try:
+            # track games played and games missed on IR
+            injuries = nfl.load_injuries(self.years)[['gsis_id', 'season', 'week','report_status', 'position']].to_pandas()
 
-    # count games on ir and games played
-        injuries['ir_games'] = injuries.groupby(['gsis_id', 'season', 'report_status'])['report_status'].transform(lambda x: (x == 'RES')).sum()
-        injuries['out_games'] = injuries.groupby(['gsis_id','season', 'report_status'])['report_status'].transform(lambda x: (x == 'INA')).sum()
-        injuries['total_missed_games'] = injuries['out_games'] + injuries['ir_games']
-        injuries.drop_duplicates(subset = ['gsis_id', 'season'], inplace=True)
+        # count games on ir and games played
+            injuries['ir_games'] = injuries.groupby(['gsis_id', 'season', 'report_status'])['report_status'].transform(lambda x: (x == 'RES')).sum()
+            injuries['out_games'] = injuries.groupby(['gsis_id','season', 'report_status'])['report_status'].transform(lambda x: (x == 'INA')).sum()
+            injuries['total_missed_games'] = injuries['out_games'] + injuries['ir_games']
+            injuries.drop_duplicates(subset = ['gsis_id', 'season'], inplace=True)
 
-        players_stats = players_stats.merge(
-            injuries[['gsis_id', 'position', 'season', 'ir_games', 'out_games', 'total_missed_games']],
-            left_on = ['player_id', 'position', 'season'],
-            right_on = ['gsis_id', 'position', 'season'],
-            how = 'left'   
-        )
+            players_stats = players_stats.merge(
+                injuries[['gsis_id', 'position', 'season', 'ir_games', 'out_games', 'total_missed_games']],
+                left_on = ['player_id', 'position', 'season'],
+                right_on = ['gsis_id', 'position', 'season'],
+                how = 'left'   
+            )
 
-        logging.info(f"Number of rows: {players_stats.shape[0]}")
+            logging.info(f"Number of rows: {players_stats.shape[0]}")
 
 
-        del injuries
-        gc.collect()
-        # Fill NaN with 0 and convert to int
-        players_stats['ir_games'] = players_stats['ir_games'].fillna(0).astype(int)
-        players_stats['out_games'] = players_stats['out_games'].fillna(0).astype(int)
+            del injuries
+            gc.collect()
+            # Fill NaN with 0 and convert to int
+            players_stats['ir_games'] = players_stats['ir_games'].fillna(0).astype(int)
+            players_stats['out_games'] = players_stats['out_games'].fillna(0).astype(int)
 
-        players_stats['total_missed_games'] = players_stats['ir_games'] + players_stats['out_games']
+            players_stats['total_missed_games'] = players_stats['ir_games'] + players_stats['out_games']
+        except Exception as e:
+            logging.info(e)
+
+        # for now this is at constant 0
+        players_stats['total_missed_games'] = 0
         players_stats['games'] = np.where(players_stats['season'] >= 2021, 17, 16)
         players_stats['games'] = players_stats['games'] - players_stats['total_missed_games']
 

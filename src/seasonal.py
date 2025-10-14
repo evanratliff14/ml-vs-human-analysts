@@ -17,9 +17,11 @@ class Seasonal(Model):
         super().__init__(points_type)
         self.type = type
         self.position = position
-        
+
         train = self.X_train
         test= self.X_test
+        train[self.label] = self.y_train
+        test[self.label] = self.y_test
         train, test= train.loc[train['position'] == position], test.loc[test['position'] == position]
         train.drop('position', axis=1, inplace=True)
         test.drop('position', axis=1, inplace=True)
@@ -45,13 +47,8 @@ class Seasonal(Model):
                 initial_strategy='median', random_state=42, 
                 add_indicator=False)
             imputer.set_output(transform = 'pandas')
-            numeric = [feat for feat in self.features if feat not in self.categorical_identifiers]
-
-            # safely don't put categorical or feature data in
-            test[numeric] = imputer.fit_transform(test[numeric])
-            train[numeric] = imputer.fit_transform(train[numeric])
-            train[self.label] = self.y_train
-            test[self.label] = self.y_test
+            test = imputer.fit_transform(test)
+            train = imputer.fit_transform(train)
 
             test.to_parquet('test.parquet')
             train.to_parquet('train.parquet')
