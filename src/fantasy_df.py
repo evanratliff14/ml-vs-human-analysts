@@ -45,7 +45,7 @@ class FantasyDataFrame:
         # count games on ir and games played
         print(injuries)
         injuries=injuries.loc[((injuries['week'] <=17) & (injuries['season']>=2021)) | ((injuries['week'] <=16) & (injuries['season']<2021))]
-        injuries['out_games'] = injuries.groupby(['gsis_id','season'])['report_status'].transform(lambda x: (x.lower() == 'out').sum())
+        injuries['out_games'] = injuries.groupby(['gsis_id','season'])['report_status'].transform(lambda x: (x == 'Out').sum())
         injuries['total_missed_games'] = injuries['out_games']
         injuries.drop_duplicates(subset = ['gsis_id', 'season'], inplace=True)
 
