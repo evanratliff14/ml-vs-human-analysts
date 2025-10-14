@@ -32,7 +32,8 @@ class Seasonal(Model):
             train = train
             test = test
         elif os.path.isfile('test.parquet') and os.path.isfile('train.parquet'):
-            train = pd.read_parquet('train.parquet')
+            columns = [feat for feat in self.features if feat not in self.categorical_identifiers]
+            train = pd.read_parquet('train.parquet', columns = columns)
             test = pd.read_parquet('test.parquet')
         else:
 
@@ -50,7 +51,7 @@ class Seasonal(Model):
             # Transform both (use .loc to avoid accidental reindexing)
             train.loc[:, numeric] = imputer.transform(train[numeric])
             test.loc[:, numeric]  = imputer.transform(test[numeric])
-            self.eval_data.loc[:, numeric]  = imputer.transform(self.eval_data[numeric])
+            self.eval_data.loc[:, numeric] = imputer.transform(self.eval_data[numeric])
 
 
             # restore labels if needed (make sure y_train/y_test align in index)
@@ -114,6 +115,7 @@ class Seasonal(Model):
         # staged predict: returns each stage of the prediction of the test set, vs just the final
         self.train['predictions'] = self.model.predict(self.train[features])
         self.test['predictions'] = self.model.predict(self.test[features])
+        # self.eval_data['predictions'] = self.model.predict(self.eval_data[features])
 
         #re-add categorical features into the mix
         self.train[list(self.categorical_identifiers)] = self.X_train[list(self.categorical_identifiers)]
@@ -125,11 +127,8 @@ class Seasonal(Model):
             stage_errors.append(mse)
             logging.info(f"Iteration {i+1}: MSE = {mse}")
         
-        self.test.to_parquet(f"{self.position}_test.parquet", index=False)
-
-        self.eval_data['predictions'] = self.model.predict(self.eval_data[features])
-        mse = mean_squared_error(self.eval_data[self.label], self.eval_data['predictions'])
-        logging.info(f"2025 evaluation MSE: {mse}")
+        # mse = mean_squared_error(self.eval_data[self.label], self.eval_data['predictions'])
+        # logging.info(f"2025 evaluation MSE: {mse}")
 
     def set_features(self):
         logging.info("Setting features...")
