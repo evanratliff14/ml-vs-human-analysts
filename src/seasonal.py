@@ -10,6 +10,10 @@ import copy
 import logging
 import os
 import joblib
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+
 
 class Seasonal(Model):
     def __init__(self, points_type, position, type = 'xgb'):
@@ -18,28 +22,50 @@ class Seasonal(Model):
         self.type = type
         self.position = position
 
-        train = self.X_train
-        test= self.X_test
+        train_test_data = self.train_test_data
+        eval = self.eval
+        test_size = 0.2
+        features = self.features
         
-        train, test= train.loc[train['position'] == position], test.loc[test['position'] == position]
-        train.drop('position', axis=1, inplace=True)
-        test.drop('position', axis=1, inplace=True)
 
+        train_test_data, eval= train_test_data.loc[train_test_data['position'] == position], eval.loc[eval['position'] == position]
+        # train.drop('position', axis=1, inplace=True)
+        # test.drop('position', axis=1, inplace=True)
+
+
+        X_train, X_test, y_train, y_test = train_test_split(train_test_data[features], train_test_data[self.label], 
+            test_size=test_size, random_state = 42)
+        
+        logging.info(f"Train and test data has {(1-test_size)*train_test_data.shape[0]} train rows and {(test_size)*train_test_data.shape[0]} test rows")
+
+        X_eval = eval[features]
+        y_eval = eval[self.label]
+
+        # create new dfs for rejoining
+        train = pd.DataFrame()
+        test = pd.DataFrame()
+        eval = pd.DataFrame()
+        
         # Imputation is required for gradient boosting class
         # iterative imputer is a bayesian ridge regression model
         # random state ON to control seeding/ control variables for feature evaluation
         if type =='xgb_hist':
-            train = train
-            test = test
-        # elif os.path.isfile('test.parquet') and os.path.isfile('train.parquet') and os.path.isfile('eval_data.parquet'):
+            
+            train[list(X_train.columns)] = X_train[list(X_train.columns)]
+            test[list(X_test.columns)] = X_test[list(X_test.columns)]
+            eval[list(X_eval.columns)] = X_eval[list(X_eval.columns)]
+            train[self.label] = y_train
+            test[self.label] = y_test
+            eval[self.label] = y_eval
+        # elif os.path.isfile('test.parquet') and os.path.isfile('train.parquet') and os.path.isfile('eval.parquet'):
         #     train = pd.read_parquet('train.parquet').fillna(0, inplace=False)
         #     test = pd.read_parquet('test.parquet').fillna(0, inplace=False)
-        #     eval_data = pd.read_parquet('eval_data.parquet').fillna(0, inplace=False)
+        #     eval = pd.read_parquet('eval.parquet').fillna(0, inplace=False)
 
         #     train[self.label] = self.y_train
         #     test[self.label]  = self.y_test
-        #     eval_data[self.label] = self.eval_data[self.label]
-        #     self.eval_data = eval_data
+        #     eval[self.label] = self.eval[self.label]
+        #     self.eval = eval
         #     self.train = train
         #     self.test = test
         # else:
@@ -54,26 +80,32 @@ class Seasonal(Model):
             numeric = [feat for feat in self.features if feat not in self.categorical_identifiers and feat !=self.label]
             
             # Fit on train numeric only
-            imputer.fit(train[numeric])
+            imputer.fit(X_train[numeric])
 
             # Transform both (use .loc to avoid accidental reindexing)
-            train.loc[:, numeric] = imputer.transform(train[numeric])
-            test.loc[:, numeric]  = imputer.transform(test[numeric])
-            self.eval_data.loc[:, numeric] = imputer.transform(self.eval_data[numeric])
+            X_train.loc[:, numeric] = imputer.transform(X_train[numeric])
+            X_test.loc[:, numeric]  = imputer.transform(X_test[numeric])
+            X_eval.loc[:, numeric] = imputer.transform(X_eval[numeric])
 
+            # rejoin
+            train[list(X_train.columns)] = X_train[list(X_train.columns)]
+            test[list(X_test.columns)] = X_test[list(X_test.columns)]
+            eval[list(X_eval.columns)] = X_eval[list(X_eval.columns)]
+            train[self.label] = y_train
+            test[self.label] = y_test
+            eval[self.label] = y_eval
+            
 
-            # restore labels if needed (make sure y_train/y_test align in index)
-            train[self.label] = self.y_train
-            test[self.label]  = self.y_test
 
             # Save parquets without the pandas index column
             train.to_parquet('train.parquet', index=False )
             test.to_parquet('test.parquet', index=False)
-            self.eval_data.to_parquet('eval_data.parquet', index=False)
+            eval.to_parquet('eval.parquet', index=False)
             
     
         self.train = train
         self.test = test
+        self.eval = eval
         self.set_model()
         logging.info("Model is ready to train")
 
@@ -124,11 +156,8 @@ class Seasonal(Model):
         # staged predict: returns each stage of the prediction of the test set, vs just the final
         self.train['predictions'] = self.model.predict(self.train[features])
         self.test['predictions'] = self.model.predict(self.test[features])
-        # self.eval_data['predictions'] = self.model.predict(self.eval_data[features])
-
-        #re-add categorical features into the mix
-        self.train[list(self.categorical_identifiers)] = self.X_train[list(self.categorical_identifiers)]
-        self.test[list(self.categorical_identifiers)] = self.X_test[list(self.categorical_identifiers)]
+        self.eval['predictions'] = self.model.predict(self.eval[features])
+        # self.eval['predictions'] = self.model.predict(self.eval[features])
                 
         stage_errors = []
         for i, y_pred_stage in enumerate(self.model.staged_predict(self.test[features])):
@@ -155,29 +184,35 @@ class Seasonal(Model):
             self.test_mae = mean_absolute_error(self.test['predictions'],self.test[self.label])
             self.train_mse = mean_squared_error(self.train['predictions'],self.train[self.label])
             self.train_mae = mean_absolute_error(self.train['predictions'],self.train[self.label])
+            self.eval_mse = mean_squared_error(self.eval['predictions'],self.eval[self.label])
+            self.eval_mae = mean_absolute_error(self.eval['predictions'],self.eval[self.label])
         except Exception as e:
             print("Error in cross_validate" + str(e))
 
     def corr(self):
         fantasy_data = self.fantasy_data
-        matrix = fantasy_data.corr(numeric_only=True)
-        threshold = 0.6
-        strong_corr = matrix[(matrix.abs() >= threshold)]
-        logging.info(strong_corr)
+        features = [feat for feat in self.features if feat not in self.categorical_identifiers]
+
+        plt.figure(figsize=(20, 10))  # width, height in inches
+
+        sns.heatmap(fantasy_data[features].corr(numeric_only=True).abs(), cmap='coolwarm')
+        plt.savefig('corr_plot.png')
+        plt.show()
 
     def __str__(self):
         model_string = "Features: \n"
         model_string = model_string + str(self.features) + "\n"
         # intentional side effect
         logging.info(self.test[['player_name', 'predictions', 'season']])
-        display = self.test[['player_name', 'predictions', 'season']].sort_values(
+        display = pd.concat(objs = [self.test, self.eval])
+        display = display[['player_name', 'predictions', 'season']].sort_values(
             by='predictions',
             ascending = True,
             inplace=False  # descending predictions, ascending season
         )       
         display = display.sort_values(
             by='season',
-            ascending = True,
+            ascending = False,
             inplace=False  # descending predictions, ascending season
         )  
         
@@ -187,6 +222,8 @@ class Seasonal(Model):
         model_string += "Test MAE: " + str(self.test_mae) + "\n"
         model_string += "Train MSE: " + str(self.train_mse) + "\n"
         model_string += "Test MSE: " + str(self.train_mae) + "\n"
+        model_string += "Eval MSE: " + str(self.eval_mse) + "\n"
+        model_string += "Eval MSE: " + str(self.eval_mae) + "\n"
 
 
         return model_string

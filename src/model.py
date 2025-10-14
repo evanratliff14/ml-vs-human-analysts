@@ -27,33 +27,19 @@ class Model:
 
         #refactor for categorical features
         features = [feat for feat in list(fantasy_data.columns) if (pd.api.types.is_numeric_dtype(fantasy_data[feat]) or feat in self.categorical_identifiers)]
-        features = features
+        features = [feat for feat in features if 'future' not in feat.lower()]
+
         logging.info(f"Total numeric columns and position {features}")
 
-        self.eval_data = fantasy_data.loc[fantasy_data['season'] == nfl.get_current_season()-1 ]
+        eval_data = fantasy_data.loc[fantasy_data['season'] == nfl.get_current_season()-1 ]
         train_test_data = fantasy_data.loc[fantasy_data['season'] < nfl.get_current_season()-1 ]
 
-        test_size = 0.2
-        logging.info(f"Train and test data has {(1-test_size)*train_test_data.shape[0]} train rows and {(test_size)*train_test_data.shape[0]} test rows")
-
-        logging.info("Preparing data for cross validation")
-        # shuffle and stratify to get results that will extrapolate to any year
-        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(train_test_data[features].drop(columns=self.label, inplace=False, axis=1), train_test_data[self.label], 
-            test_size=test_size)
-
-        # prevent set_features from cheating during feature selection
-        self.X_train.drop(labels=[col for col in self.X_train.columns if 'future' in col.lower()], axis=1, inplace=True)
-        self.X_test.drop(labels=[col for col in self.X_test.columns if 'future' in col.lower()],axis=1, inplace=True)
-
-        features = [col for col in features if 'future' not in col.lower()]
 
         # should have categorical idenifiers, sparse vars, and lack future vars
         self.features = features
+        self.eval = eval_data
+        self.train_test_data = train_test_data
         
-        #init - these are the names seasonal uses, the vars that __str__ calls
-        self.test = pd.DataFrame()
-        self.train = pd.DataFrame()
-
         self.points_type = points_type
         self.model = None
 
