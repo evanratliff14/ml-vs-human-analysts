@@ -10,7 +10,7 @@ class __main__:
             fdf = FantasyDataFrame()
             self.fdf = fdf
             logging.info("Creating parquet...")
-            fdf.players_stats.to_parquet('data.parquet')
+            fdf.players_stats.to_parquet('data.parquet', index=False)
         
         self.rb_seasonal = Seasonal(points_type='half_ppr', position = 'RB', type = 'xgb')
 

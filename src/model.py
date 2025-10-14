@@ -64,15 +64,10 @@ class Model:
     @abstractmethod
     def test_model(self, features=None):
         pass
-
+    
+    @abstractmethod
     def cross_validate(self):
-        try:
-            self.test_mse = mean_squared_error(self.test['predictions'], self.train[self.label])
-            self.test_mae = mean_absolute_error(self.test['predictions'],self.train[self.label])
-            self.train_mse = mean_squared_error(self.train['predictions'],self.train[self.label])
-            self.train_mae = mean_absolute_error(self.train['predictions'],self.train[self.label])
-        except Exception as e:
-            print("Error in cross_validate" + str(e))
+       pass
     
     @abstractmethod
     def __str__(self):

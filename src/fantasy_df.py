@@ -370,7 +370,7 @@ class FantasyDataFrame:
             else:
                 players_stats.drop(col, axis = 1, inplace=True)
         
-        players_stats.to_csv('players_stats.csv')
+        players_stats.to_csv('players_stats.csv', index=False)
         
         self.players_stats = players_stats
 

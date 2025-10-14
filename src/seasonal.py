@@ -42,7 +42,7 @@ class Seasonal(Model):
                 add_indicator=False)
             imputer.set_output(transform = 'pandas')
 
-            numeric = [feat for feat in self.features if feat not in self.categorical_identifiers]
+            numeric = [feat for feat in self.features if feat not in self.categorical_identifiers and feat !=self.label]
             
             # Fit on train numeric only
             imputer.fit(train[numeric])
@@ -50,6 +50,8 @@ class Seasonal(Model):
             # Transform both (use .loc to avoid accidental reindexing)
             train.loc[:, numeric] = imputer.transform(train[numeric])
             test.loc[:, numeric]  = imputer.transform(test[numeric])
+            self.eval_data.loc[:, numeric]  = imputer.transform(self.eval_data[numeric])
+
 
             # restore labels if needed (make sure y_train/y_test align in index)
             train[self.label] = self.y_train
@@ -123,13 +125,11 @@ class Seasonal(Model):
             stage_errors.append(mse)
             logging.info(f"Iteration {i+1}: MSE = {mse}")
         
-        self.test.to_parquet(f"{self.position}_test.parquet")
+        self.test.to_parquet(f"{self.position}_test.parquet", index=False)
 
-        # eval = self.eval_data.copy()
-        # eval['predictions'] = self.model.predict(eval[features])
-        # eval.to_parquet()
-        # mse = mean_squared_error(eval[self.label], eval['predictions'])
-        # logging.info(f"2025 evaluation MSE: {mse}")
+        self.eval_data['predictions'] = self.model.predict(self.eval_data[features])
+        mse = mean_squared_error(self.eval_data[self.label], self.eval_data['predictions'])
+        logging.info(f"2025 evaluation MSE: {mse}")
 
     def set_features(self):
         logging.info("Setting features...")
@@ -144,8 +144,14 @@ class Seasonal(Model):
         return super().__str__()
         
     def cross_validate(self):
-        return super().cross_validate()
-    
+        try:
+            self.test_mse = mean_squared_error(self.test['predictions'], self.test[self.label])
+            self.test_mae = mean_absolute_error(self.test['predictions'],self.test[self.label])
+            self.train_mse = mean_squared_error(self.train['predictions'],self.train[self.label])
+            self.train_mae = mean_absolute_error(self.train['predictions'],self.train[self.label])
+        except Exception as e:
+            print("Error in cross_validate" + str(e))
+
     def corr(self):
         fantasy_data = self.fantasy_data
         matrix = fantasy_data.corr(numeric_only=True)
@@ -160,19 +166,21 @@ class Seasonal(Model):
         logging.info(self.test[['player_name', 'predictions', 'season']])
         display = self.test[['player_name', 'predictions', 'season']].sort_values(
             by=['predictions'],
-            ascending = False  # descending predictions, ascending season
+            ascending = True,
+            inplace=False  # descending predictions, ascending season
         )       
         display = display.sort_values(
             by=['season'],
-            ascending = True  # descending predictions, ascending season
+            ascending = True,
+            inplace=False  # descending predictions, ascending season
         )  
         
         display.to_parquet('predictions.parquet')
         self.cross_validate()
-        model_string += "Test MSE: " + str(super.test_mse) + "\n"
-        model_string += "Test MAE: " + str(super.test_mae) + "\n"
-        model_string += "Train MSE: " + str(super.train_mse) + "\n"
-        model_string += "Test MSE: " + str(super.train_mae) + "\n"
+        model_string += "Test MSE: " + str(self.test_mse) + "\n"
+        model_string += "Test MAE: " + str(self.test_mae) + "\n"
+        model_string += "Train MSE: " + str(self.train_mse) + "\n"
+        model_string += "Test MSE: " + str(self.train_mae) + "\n"
         return model_string
 
         
