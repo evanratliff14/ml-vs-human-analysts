@@ -31,10 +31,18 @@ class Seasonal(Model):
         if type =='xgb_hist':
             train = train
             test = test
-        elif os.path.isfile('test.parquet') and os.path.isfile('train.parquet'):
-            columns = [feat for feat in self.features if feat not in self.categorical_identifiers]
-            train = pd.read_parquet('train.parquet', columns = columns)
-            test = pd.read_parquet('test.parquet')
+        # elif os.path.isfile('test.parquet') and os.path.isfile('train.parquet') and os.path.isfile('eval_data.parquet'):
+        #     train = pd.read_parquet('train.parquet').fillna(0, inplace=False)
+        #     test = pd.read_parquet('test.parquet').fillna(0, inplace=False)
+        #     eval_data = pd.read_parquet('eval_data.parquet').fillna(0, inplace=False)
+
+        #     train[self.label] = self.y_train
+        #     test[self.label]  = self.y_test
+        #     eval_data[self.label] = self.eval_data[self.label]
+        #     self.eval_data = eval_data
+        #     self.train = train
+        #     self.test = test
+        # else:
         else:
 
             logging.info("Imputing missing values...")
@@ -59,8 +67,9 @@ class Seasonal(Model):
             test[self.label]  = self.y_test
 
             # Save parquets without the pandas index column
-            train.to_parquet('train.parquet', index=False)
+            train.to_parquet('train.parquet', index=False )
             test.to_parquet('test.parquet', index=False)
+            self.eval_data.to_parquet('eval_data.parquet', index=False)
             
     
         self.train = train
@@ -174,7 +183,7 @@ class Seasonal(Model):
             inplace=False  # descending predictions, ascending season
         )  
         
-        display.to_parquet('predictions.parquet')
+        display.to_csv('predictions.csv')
         self.cross_validate()
         model_string += "Test MSE: " + str(self.test_mse) + "\n"
         model_string += "Test MAE: " + str(self.test_mae) + "\n"
