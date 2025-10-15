@@ -12,7 +12,7 @@ class __main__:
             logging.info("Creating parquet...")
             fdf.players_stats.to_parquet('data.parquet', index=False)
         
-        self.rb_seasonal = Seasonal(points_type='half_ppr', position = 'RB', type = 'xgb')
+        self.rb_seasonal = Seasonal(points_type='ppr', position = 'RB', type = 'xgb')
 
     def run(self):
         rb_seasonal = self.rb_seasonal

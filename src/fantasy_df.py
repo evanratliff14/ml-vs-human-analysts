@@ -13,7 +13,6 @@ class FantasyDataFrame:
         logging.info('Initializing...')
         # normalize to football year season
         years = [year for year in range(2016, nfl.get_current_season()+1)]
-        years.remove(2020)
         self.years = years
         self.pos = ['TE', 'RB', 'WR', 'QB']
         self.summary_level = summary_level

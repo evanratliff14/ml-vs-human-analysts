@@ -25,7 +25,9 @@ class Seasonal(Model):
         train_test_data = self.train_test_data
         eval = self.eval
         test_size = 0.2
-        features = self.features
+        features = [line.strip() for line in open(f"{position.lower()}_features.txt", "r")]
+        self.features = features
+
         
 
         train_test_data, eval= train_test_data.loc[train_test_data['position'] == position], eval.loc[eval['position'] == position]
@@ -205,7 +207,7 @@ class Seasonal(Model):
         # intentional side effect
         logging.info(self.test[['player_name', 'predictions', 'season']])
         display = pd.concat(objs = [self.test, self.eval])
-        display = display[['player_name', 'predictions', 'season']].sort_values(
+        display = display[['player_name', 'predictions', 'season', self.label]].sort_values(
             by='predictions',
             ascending = True,
             inplace=False  # descending predictions, ascending season
@@ -221,9 +223,40 @@ class Seasonal(Model):
         model_string += "Test MSE: " + str(self.test_mse) + "\n"
         model_string += "Test MAE: " + str(self.test_mae) + "\n"
         model_string += "Train MSE: " + str(self.train_mse) + "\n"
-        model_string += "Test MSE: " + str(self.train_mae) + "\n"
+        model_string += "Test MAE: " + str(self.train_mae) + "\n"
         model_string += "Eval MSE: " + str(self.eval_mse) + "\n"
-        model_string += "Eval MSE: " + str(self.eval_mae) + "\n"
+        model_string += "Eval MAE: " + str(self.eval_mae) + "\n"
+
+        from sklearn.inspection import permutation_importance
+        features = [feat for feat in self.features if feat not in self.categorical_identifiers]
+
+        r = permutation_importance(self.model, self.eval[features], self.eval[self.label],
+                                n_repeats=1,
+                                random_state=0,n_jobs=-1)
+        # Pretty print only features that are “significant” by your chosen threshold
+        print("Eval permutation importance")
+        sorted_idx = r.importances_mean.argsort()[::-1]
+
+        for i in sorted_idx:
+            mean = r.importances_mean[i]
+            std = r.importances_std[i]
+            # heuristic: mean is reliably > 0 (2-sigma rule); adjust multiplier if you want
+            if mean - 2 * std > 0:
+                print(f"{features[i]:<30} {mean:.4f} +/- {std:.4f}")
+
+        s = permutation_importance(self.model, self.test[features], self.test[self.label],
+                                n_repeats=1,
+                                random_state=0,n_jobs=-1)
+
+        # Pretty print only features that are “significant” by your chosen threshold
+        sorted_idx = r.importances_mean.argsort()[::-1]
+        print("Test permutation importance")
+        for i in sorted_idx:
+            mean = s.importances_mean[i]
+            std = s.importances_std[i]
+            # heuristic: mean is reliably > 0 (2-sigma rule); adjust multiplier if you want
+            if mean - 2 * std > 0:
+                print(f"{features[i]:<30} {mean:.4f} +/- {std:.4f}")
 
 
         return model_string
