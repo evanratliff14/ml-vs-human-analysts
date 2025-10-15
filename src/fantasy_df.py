@@ -33,7 +33,27 @@ class FantasyDataFrame:
         players_stats = self.players_stats
         logging.info(f"Number of rows: {players_stats.shape[0]}")
 
-        # create custom stats
+        # create stats for 2025 based on current weekly stats
+        players_weekly_stats = nfl.load_player_stats(nfl.get_current_season(), 'week').to_pandas()
+        players_weekly_stats = players_weekly_stats.loc[players_weekly_stats['week']<=18]
+
+        # build flexible mechanism for aggregating but preserving all other columns as well using first
+        agg_dict = {col: 'first' for col in players_weekly_stats.columns}
+        agg_dict.update({
+            'fantasy_points_ppr': 'sum',
+            'receptions': 'sum'
+        })
+        players_weekly_stats= players_weekly_stats.groupby(['player_id'], as_index=False).agg(agg_dict)
+
+        players_weekly_stats['fantasy_points_half_ppr'] = players_weekly_stats['fantasy_points_ppr']-players_weekly_stats['receptions']*0.5
+        players_weekly_stats['fantasy_points_standard'] = players_weekly_stats['fantasy_points_ppr']-players_weekly_stats['receptions']*1
+        players_weekly_stats['season'] = nfl.get_current_season()
+        players_weekly_stats.drop_duplicates(subset= ['season', 'player_id'])
+        logging.info(list(players_weekly_stats.columns))
+
+        players_stats = pd.concat([players_stats, players_weekly_stats[['player_id', 'season', 'fantasy_points_half_ppr', 'fantasy_points_ppr', 'fantasy_points_standard', 'player_name', 'position', 'headshot_url']]], ignore_index=True, sort=False)
+
+
         players_stats['fantasy_points_standard'] = players_stats['fantasy_points_ppr']-(players_stats['receptions']*1)
         players_stats['fantasy_points_half_ppr'] = players_stats['fantasy_points_ppr']-(players_stats['receptions']*0.5)
 

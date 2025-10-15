@@ -30,6 +30,9 @@ class Model:
         features = [feat for feat in features if 'future' not in feat.lower()]
 
         logging.info(f"Total numeric columns and position {features}")
+        current_data = fantasy_data.loc[fantasy_data['season'] == nfl.get_current_season()]
+
+        current_data.to_csv('current_data.csv')
 
         eval_data = fantasy_data.loc[fantasy_data['season'] == nfl.get_current_season()-1 ]
         train_test_data = fantasy_data.loc[fantasy_data['season'] < nfl.get_current_season()-1 ]
