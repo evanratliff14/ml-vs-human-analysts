@@ -22,8 +22,9 @@ class Model:
 
         #clean data at this step - we don't want to call fantasy_df too many times to clean data
         fantasy_data.dropna(subset=[self.label], axis=0, inplace=True)
+        fantasy_data = fantasy_data.loc[(fantasy_data[self.label] >= 0) | (fantasy_data['season']>=nfl.get_current_season())]
         threshold = 0.3
-        fantasy_data = fantasy_data.dropna(axis=1, thresh=len(fantasy_data) * (1 - threshold))
+        fantasy_data = fantasy_data.dropna(axis=1, thresh=len(fantasy_data)*threshold)
 
         #refactor for categorical features
         features = [feat for feat in list(fantasy_data.columns) if (pd.api.types.is_numeric_dtype(fantasy_data[feat]) or feat in self.categorical_identifiers)]

@@ -13,6 +13,7 @@ import joblib
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
+import nflreadpy as nfl
 
 
 class Seasonal(Model):
@@ -31,12 +32,16 @@ class Seasonal(Model):
         
 
         train_test_data, eval= train_test_data.loc[train_test_data['position'] == position], eval.loc[eval['position'] == position]
-        # train.drop('position', axis=1, inplace=True)
-        # test.drop('position', axis=1, inplace=True)
 
 
-        X_train, X_test, y_train, y_test = train_test_split(train_test_data[features], train_test_data[self.label], 
-            test_size=test_size, random_state = 42)
+        mask = train_test_data['season'] < nfl.get_current_season()-2
+        train = train_test_data.loc[mask]
+        test = train_test_data.loc[~mask]
+        X_train, X_test = train[features], test[features]
+        y_train, y_test = train[self.label], test[self.label]
+
+        # X_train, X_test, y_train, y_test = train_test_split(train_test_data[features], train_test_data[self.label], 
+        #     test_size=test_size, random_state = 42)
         
         logging.info(f"Train and test data has {(1-test_size)*train_test_data.shape[0]} train rows and {(test_size)*train_test_data.shape[0]} test rows")
 
@@ -48,29 +53,17 @@ class Seasonal(Model):
         test = pd.DataFrame()
         eval = pd.DataFrame()
         
-        # Imputation is required for gradient boosting class
-        # iterative imputer is a bayesian ridge regression model
-        # random state ON to control seeding/ control variables for feature evaluation
-        if type =='xgb_hist':
-            
-            train[list(X_train.columns)] = X_train[list(X_train.columns)]
-            test[list(X_test.columns)] = X_test[list(X_test.columns)]
-            eval[list(X_eval.columns)] = X_eval[list(X_eval.columns)]
-            train[self.label] = y_train
-            test[self.label] = y_test
-            eval[self.label] = y_eval
-        # elif os.path.isfile('test.parquet') and os.path.isfile('train.parquet') and os.path.isfile('eval.parquet'):
-        #     train = pd.read_parquet('train.parquet').fillna(0, inplace=False)
-        #     test = pd.read_parquet('test.parquet').fillna(0, inplace=False)
-        #     eval = pd.read_parquet('eval.parquet').fillna(0, inplace=False)
-
-        #     train[self.label] = self.y_train
-        #     test[self.label]  = self.y_test
-        #     eval[self.label] = self.eval[self.label]
-        #     self.eval = eval
-        #     self.train = train
-        #     self.test = test
-        # else:
+        if os.path.isfile(f'{self.position}_test.parquet') and os.path.isfile(f'{self.position}train.parquet') and os.path.isfile(f'{self.position}_eval.parquet'):
+            train = pd.read_parquet(f'{self.position}_train.parquet').fillna(0, inplace=False, index=False)
+            test = pd.read_parquet(f'{self.position}_test.parquet').fillna(0, inplace=False, index=False)
+            eval = pd.read_parquet(f'{self.position}_eval.parquet').fillna(0, inplace=False, index=False)
+#LEGACY 
+            # train[self.label] = self.y_train
+            # test[self.label]  = self.y_test
+            # eval[self.label] = self.eval[self.label]
+            # self.eval = eval
+            # self.train = train
+            # self.test = test
         else:
 
             logging.info("Imputing missing values...")
@@ -100,9 +93,9 @@ class Seasonal(Model):
 
 
             # Save parquets without the pandas index column
-            train.to_parquet('train.parquet', index=False )
-            test.to_parquet('test.parquet', index=False)
-            eval.to_parquet('eval.parquet', index=False)
+            train.to_parquet(f'{self.position}_train.parquet', index=False )
+            test.to_parquet(f'{self.position}_test.parquet', index=False)
+            eval.to_parquet(f'{self.position}_eval.parquet', index=False)
             
     
         self.train = train
@@ -119,14 +112,7 @@ class Seasonal(Model):
         # can use a combo of size and impurity based limits
         # n_iter_no_change, validation fraction focus on early stopping (validation fraction only used is n is integer)
         type = self.type
-        if type =='xgb_hist':
-            # can insert 'college' into categorical features
-            self.model = HistGradientBoostingRegressor(loss='squared_error', quantile=None,
-                learning_rate=0.1, max_iter=100, max_leaf_nodes=31, max_depth=None, min_samples_leaf=20, 
-                l2_regularization=0.0, max_features=10, max_bins=255, categorical_features='from_dtype', 
-                monotonic_cst=None, interaction_cst=None, warm_start=False, early_stopping='auto', scoring='loss', 
-                validation_fraction=0.1, n_iter_no_change=10, tol=0.1, verbose=0, random_state=42)
-        elif type == 'xgb':
+        if type == 'xgb':
             self.model = GradientBoostingRegressor(loss='squared_error', learning_rate=0.1, n_estimators=350,
                 criterion='friedman_mse', min_samples_split=250, min_samples_leaf=1, min_weight_fraction_leaf=0.0,
                 max_depth=7, min_impurity_decrease=64.0, init=None, random_state=42, max_features=35, alpha=0.9, 
@@ -205,20 +191,25 @@ class Seasonal(Model):
         model_string = "Features: \n"
         model_string = model_string + str(self.features) + "\n"
         # intentional side effect
-        logging.info(self.test[['player_name', 'predictions', 'season']])
         display = pd.concat(objs = [self.test, self.eval])
         display = display[['player_name', 'predictions', 'season', self.label]].sort_values(
             by='predictions',
-            ascending = True,
-            inplace=False  # descending predictions, ascending season
+            ascending = False,
+            inplace=False,
+            kind = 'stable'
+              # descending predictions, ascending season
         )       
         display = display.sort_values(
             by='season',
             ascending = False,
-            inplace=False  # descending predictions, ascending season
+            inplace=False,
+            kind='stable'
+              # descending predictions, ascending season
         )  
+        logging.info(display)
+
         
-        display.to_csv('predictions.csv')
+        display.to_csv(f'{self.position}_predictions.csv')
         self.cross_validate()
         model_string += "Test MSE: " + str(self.test_mse) + "\n"
         model_string += "Test MAE: " + str(self.test_mae) + "\n"

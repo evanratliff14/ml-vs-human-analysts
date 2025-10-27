@@ -1,18 +1,15 @@
 carries
 rushing_yards
 rushing_tds
-rushing_fumbles
 receptions
 targets
 receiving_yards
 receiving_tds
-receiving_fumbles
 receiving_air_yards
 receiving_yards_after_catch
 target_share
 air_yards_share
 wopr
-penalties
 carries/game
 rushing_tds/game
 receiving_tds/game
@@ -21,8 +18,6 @@ targets_game
 height
 weight
 years_exp
-half_ppr/game
-fantasy_points_half_ppr
 receiving_tds_team_rbs_sum
 carries_team_rbs_sum
 receiving_yards_team_rbs_sum
@@ -84,3 +79,5 @@ catch_percentage_other_team_tes
 wopr_other_team_tes
 percent_share_of_intended_air_yards_other_team_tes
 receiving_epa_other_team_tes
+half_ppr/game
+fantasy_points_half_ppr
