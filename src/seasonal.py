@@ -54,9 +54,9 @@ class Seasonal(Model):
         eval = pd.DataFrame()
         
         if os.path.isfile(f'{self.position}_test.parquet') and os.path.isfile(f'{self.position}train.parquet') and os.path.isfile(f'{self.position}_eval.parquet'):
-            train = pd.read_parquet(f'{self.position}_train.parquet').fillna(0, inplace=False)
-            test = pd.read_parquet(f'{self.position}_test.parquet').fillna(0, inplace=False)
-            eval = pd.read_parquet(f'{self.position}_eval.parquet').fillna(0, inplace=False)
+            train = pd.read_parquet(f'{self.position}_train.parquet').fillna(0, inplace=False, index=False)
+            test = pd.read_parquet(f'{self.position}_test.parquet').fillna(0, inplace=False, index=False)
+            eval = pd.read_parquet(f'{self.position}_eval.parquet').fillna(0, inplace=False, index=False)
 #LEGACY 
             # train[self.label] = self.y_train
             # test[self.label]  = self.y_test
@@ -191,18 +191,23 @@ class Seasonal(Model):
         model_string = "Features: \n"
         model_string = model_string + str(self.features) + "\n"
         # intentional side effect
-        logging.info(self.test[['player_name', 'predictions', 'season']])
         display = pd.concat(objs = [self.test, self.eval])
         display = display[['player_name', 'predictions', 'season', self.label]].sort_values(
             by='predictions',
-            ascending = True,
-            inplace=False  # descending predictions, ascending season
+            ascending = False,
+            inplace=False,
+            kind = 'stable'
+              # descending predictions, ascending season
         )       
         display = display.sort_values(
             by='season',
             ascending = False,
-            inplace=False  # descending predictions, ascending season
+            inplace=False,
+            kind='stable'
+              # descending predictions, ascending season
         )  
+        logging.info(display)
+
         
         display.to_csv(f'{self.position}_predictions.csv')
         self.cross_validate()
