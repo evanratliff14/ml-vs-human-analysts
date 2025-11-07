@@ -26,7 +26,7 @@ class Seasonal(Model):
         train_test_data = self.train_test_data
         eval = self.eval
         test_size = 0.2
-        features = [line.strip() for line in open(f"{position.lower()}_features.txt", "r")]
+        features = [line.strip() for line in open(f"data/{position.lower()}_features.txt", "r")]
         self.features = features
 
         
@@ -209,7 +209,7 @@ class Seasonal(Model):
         logging.info(display)
 
         
-        display.to_csv(f'{self.position}_predictions.csv')
+        display.to_parquet(f'data/{self.position.lower()}_predictions_{self.type}.parquet')
         self.cross_validate()
         model_string += "Test MSE: " + str(self.test_mse) + "\n"
         model_string += "Test MAE: " + str(self.test_mae) + "\n"

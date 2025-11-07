@@ -1,42 +1,55 @@
-import Flask, jsonify, send_file, request
+# app.py
+from flask import Flask, jsonify, request
 import pandas as pd
 from pathlib import Path
-p = Path(__file__).parent / "data" / "players.csv"
 
-p.exists()        # True if file exists
-p.is_file()       # True if it's a file
-p.read_text()     # read whole file (string)
-p.open("rb")      # open as binary file-like object
-p.resolve()       # absolute canonical path
-p.parent          # parent dir
-list(p.glob("*.csv"))   # non-recursive
-for f in p.rglob("*.parquet"):   # recursive
+app = Flask(__name__)
+DIR = Path(__file__).resolve().parent
 
-class App:
-    def __init__:
-        app = Flask(__name__)
+# register routes via decorators (clearer)
+@app.route("/")
+def root():
+    return jsonify({"ok": True, "msg": "server running"})
 
-DATA_DIR = Path(__file__).parent / "data"
+@app.route("/fetch_data", methods=["POST"])
+def fetch_data():
+    data = request.get_json(silent=True) or {}
+    position = (data.get("position") or "").lower()
+    df_type = data.get("type", "predictions")
+    model = data.get("model", "xgb")
+    # optional time param (unused here)
+    # time = data.get("time", "seasonal")
 
-# @app.route(...) is a decorator that registers the function below it as an HTTP handler for that path.
+    if not position:
+        return jsonify({"error": "Position is required"}), 400
+    if position not in ["rb", "qb", "wr", "te"]:
+        return jsonify({"error": "Invalid position"}), 400
 
-# The decorated function becomes the view or endpoint handler; its return value is converted into an HTTP response by Flask.
+    parquet_path = DIR / f"data/{position}_{df_type}_{model}.parquet"
+    if not parquet_path.exists():
+        return jsonify({"error": f"Data file not found: {parquet_path}"}), 404
 
-# Common return types:
+    df = pd.read_parquet(parquet_path)
+    return jsonify(df.to_dict(orient="records"))
 
-# dict (Flask converts to JSON) — return {"ok": True}, 200
+@app.route("/get_features", methods=["POST"])
+def get_features():
+    data = request.get_json(silent=True) or {}
+    position = (data.get("position") or "").lower()
+    if not position:
+        return jsonify({"error": "Position is required"}), 400
+    if position not in ["rb", "qb", "wr", "te"]:
+        return jsonify({"error": "Invalid position"}), 400
 
-# str (plain text/html)
+    features_path = DIR / f"data/{position}_features.txt"
 
-# (body, status, headers) tuple
+    if not features_path.exists():
+        return jsonify({"error": f"Features file not found: {features_path}"}), 404
 
-# send_file(...) for files/streams
+    # If parquet:
+    df = pd.read_parquet(features_path)
+    return jsonify(df.to_list() if hasattr(df, "to_list") else df.tolist())
 
-# methods controls allowed HTTP methods. Default is ["GET"].
-
-# Path variables (like <name>) are passed as function args. Add converters: <int:id>, <path:subpath>.
-
-# Use @app.route for simple apps. For larger apps use Blueprints, same decorator style: @bp.route(...).
-    @app.route()
-    def 
-    
+if __name__ == "__main__":
+    # run with: python app.py
+    app.run(debug=True, host="127.0.0.1", port=5000)
