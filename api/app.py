@@ -15,14 +15,28 @@ CORS(app,
      methods=["POST", "OPTIONS"],
      allow_headers=["Content-Type"],
      supports_credentials=False)
+
+
 DIR = Path(__file__).resolve().parent
 
 @app.route("/")
+@cross_origin(
+    origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://ml-vs-human-analysts-qjyln8ob3-evans-projects-20880db0.vercel.app"
+    ],
+    methods=["POST", "OPTIONS"],
+    allow_headers=["Content-Type"],
+)
 def root():
     return jsonify({"ok": True, "msg": "server running"})
 
 @app.route("/api/fetch_data", methods=["POST"])
 def fetch_data():
+    if request.method == "OPTIONS":
+        # Preflight request, just return 200 with CORS headers
+        return "", 200
     data = request.get_json(silent=True) or {}
     position = (data.get("position") or "").lower()
     df_type = data.get("type", "predictions")
@@ -61,6 +75,9 @@ def fetch_data():
 
 @app.route("/api/get_features", methods=["POST"])
 def get_features():
+    if request.method == "OPTIONS":
+        # Preflight request, just return 200 with CORS headers
+        return "", 200
     data = request.get_json(silent=True) or {}
     position = (data.get("position") or "").lower()
     if not position:
@@ -83,6 +100,9 @@ def get_features():
 
 @app.route("/api/get_error", methods=["POST"])
 def get_error():
+    if request.method == "OPTIONS":
+        # Preflight request, just return 200 with CORS headers
+        return "", 200
     data = request.get_json(silent=True) or {}
     position = (data.get("position") or "").lower()
     if not position:
@@ -104,6 +124,9 @@ def get_error():
 
 @app.route("/api/get_perm_importance", methods=["POST"])
 def get_perm_importance():
+    if request.method == "OPTIONS":
+        # Preflight request, just return 200 with CORS headers
+        return "", 200
     data = request.get_json(silent=True) or {}
     position = (data.get("position") or "").lower()
     if not position:
