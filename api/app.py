@@ -4,24 +4,34 @@ from flask_cors import CORS
 import pandas as pd
 from pathlib import Path
 import re
+from serverless_wsgi import handle_request
+import os
+
 
 app = Flask(__name__)
-# Enable CORS with explicit configuration
+# Enable CORS with expxlicit configuration
 # This automatically handles OPTIONS preflight requests for all routes
-CORS(app, 
-     origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-     methods=["GET", "POST", "OPTIONS"],
-     allow_headers=["Content-Type"],
-     supports_credentials=False)
+CORS(app,
+     origins=[
+         "http://localhost:3000",
+         "http://127.0.0.1:3000",
+         r"https://ml-vs-human-analysts.*\.vercel\.app",
+         "https://ml-vs-human-analysts.vercel.app",
+     ])
+
+
+
 DIR = Path(__file__).resolve().parent
 
-# register routes via decorators (clearer)
 @app.route("/")
 def root():
     return jsonify({"ok": True, "msg": "server running"})
 
 @app.route("/api/fetch_data", methods=["POST"])
 def fetch_data():
+    if request.method == "OPTIONS":
+        # Preflight request, just return 200 with CORS headers
+        return "", 200
     data = request.get_json(silent=True) or {}
     position = (data.get("position") or "").lower()
     df_type = data.get("type", "predictions")
@@ -60,6 +70,9 @@ def fetch_data():
 
 @app.route("/api/get_features", methods=["POST"])
 def get_features():
+    if request.method == "OPTIONS":
+        # Preflight request, just return 200 with CORS headers
+        return "", 200
     data = request.get_json(silent=True) or {}
     position = (data.get("position") or "").lower()
     if not position:
@@ -82,6 +95,9 @@ def get_features():
 
 @app.route("/api/get_error", methods=["POST"])
 def get_error():
+    if request.method == "OPTIONS":
+        # Preflight request, just return 200 with CORS headers
+        return "", 200
     data = request.get_json(silent=True) or {}
     position = (data.get("position") or "").lower()
     if not position:
@@ -103,6 +119,9 @@ def get_error():
 
 @app.route("/api/get_perm_importance", methods=["POST"])
 def get_perm_importance():
+    if request.method == "OPTIONS":
+        # Preflight request, just return 200 with CORS headers
+        return "", 200
     data = request.get_json(silent=True) or {}
     position = (data.get("position") or "").lower()
     if not position:
@@ -143,12 +162,6 @@ def get_perm_importance():
             # This should contain: feature_name + spaces + (possibly part of importance if there are multiple numbers)
             text_before = content[prev_end:match_start].strip()
             
-            # The feature name is everything except the last number (which is the importance)
-            # Find the last number in text_before - that's where the importance starts
-            # Everything before that is the feature name
-            # But actually, importance is already captured in the match, so we need to find
-            # where in text_before the importance number appears
-            
             # Actually, simpler: the text_before ends with spaces and then the importance number
             # So we can find the last sequence of non-digit, non-space characters
             feature_match = re.search(r'([a-zA-Z_/][a-zA-Z0-9_/]*)\s*$', text_before)
@@ -173,6 +186,6 @@ def get_perm_importance():
     except Exception as e:
         return jsonify({"error": f"Error reading perm importance file: {str(e)}"}), 500
 
-if __name__ == "__main__":
-    # run with: python app.py
-    app.run(debug=True, host="127.0.0.1", port=5000)
+
+def handler(request, context):
+    return handle_request(app, request, context)

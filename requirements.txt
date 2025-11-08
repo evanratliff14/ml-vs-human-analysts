@@ -11,3 +11,4 @@ matplotlib
 joblib
 flask
 flask-cors
+serverless_wsgi
