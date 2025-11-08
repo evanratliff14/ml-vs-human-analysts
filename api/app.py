@@ -20,15 +20,6 @@ CORS(app,
 DIR = Path(__file__).resolve().parent
 
 @app.route("/")
-@cross_origin(
-    origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://ml-vs-human-analysts-qjyln8ob3-evans-projects-20880db0.vercel.app"
-    ],
-    methods=["POST", "OPTIONS"],
-    allow_headers=["Content-Type"],
-)
 def root():
     return jsonify({"ok": True, "msg": "server running"})
 
