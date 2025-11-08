@@ -1,46 +1,29 @@
 **# ml_vs_human_analysts
 
-A repository leveraging 10 years worth of classical NFL stats and Next Gen Stats into fantasy football machine learning predictions against human analysts’ 
-
-Uses half-ppr, standard, and full-ppr PER game as RMSE and MAE metrics. Eval data:= current nfl season, test:= {current_season-1, current_season-2}, train := [year for year in range(2016,current_season-2)]
+A project comparing machine learning predictions against human analysts’ performance in fantasy football.
 
 ## Overview
-web/ for frontend
-api/ for exposed app.py endpoint
-src/ for backend (data, ML)
+This repo contains code, data, and notebooks to evaluate how well machine learning models forecast NFL fantasy football outcomes compared to human analysts.
 
-## Run models locally
+## Structure
+- `PLAN.md` — Project goals & roadmap  
+- `fantasy_data.csv`, `fantasy_data.pkl` — Fantasy football stats  
+- `nfl-win-totals.csv` — NFL win totals data  
+- `RB_Prediction.csv` — Running back prediction data  
+- `fantasy_df.py` — Data cleaning/processing  
+- `rb_gb.py` — Model training & evaluation  
+- `gb_nb.ipynb` — Jupyter notebook for analysis  
+- `planning.txt` — Notes & brainstorming  
+
+## Setup
+```bash
 git clone https://github.com/evanratliff14/ml_vs_human_analysts.git
-cd src
+cd ml_vs_human_analysts
 python3 -m venv venv && source venv/bin/activate  # or venv\Scripts\activate on Windows
-pip install -r requirements.txt
+pip install -r requirements.txt  # or: pip install pandas numpy scikit-learn jupyter
+**
 
-## PYTHON
-make sure python3 version is supported (recommended ~3.11, but multiple versions will work)
-
-``bash
-python3 model_executor.py
-flask run (to run the backend in development)
-
-## to tweak model features
-edit/add/remove lines in {position}_features.txt
-
-## other navigation
-/data
-    - all data accessible via API (lightweight parquets)
-
-/viewable
-    - historical model predictions for easy open (csv)
-
-/cache
-    - files that are saved just as to save loading time for model_executor.py
-
-.parquet --> data for non-reloading when calling model_executor.py (calls FantasyDataFrame)
-.joblib --> lightweight models
-.csv --> heavier weight than parquet, used for local display
-
-# data
-credit nflreadpy and nflverse
-win totals credit https://www.nfeloapp.com/nfl-power-ratings/nfl-win-totals/
-
-
+## Usage
+python fantasy_df.py
+python rb_gb.py
+jupyter notebook gb_nb.ipynb
