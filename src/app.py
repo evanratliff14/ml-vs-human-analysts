@@ -9,8 +9,8 @@ app = Flask(__name__)
 # Enable CORS with explicit configuration
 # This automatically handles OPTIONS preflight requests for all routes
 CORS(app, 
-     origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-     methods=["GET", "POST", "OPTIONS"],
+     origins=["http://localhost:3000", "http://127.0.0.1:3000", "https://ml-vs-human-analysts-qjyln8ob3-evans-projects-20880db0.vercel.app"],
+     methods=["POST", "OPTIONS"],
      allow_headers=["Content-Type"],
      supports_credentials=False)
 DIR = Path(__file__).resolve().parent
@@ -165,7 +165,3 @@ def get_perm_importance():
         return jsonify({"features": top_features})
     except Exception as e:
         return jsonify({"error": f"Error reading perm importance file: {str(e)}"}), 500
-
-def handler(request, context):
-    """Serverless entry point for Vercel."""
-    return app(request.environ, request.start_response)
