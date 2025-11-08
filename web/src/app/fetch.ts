@@ -1,10 +1,36 @@
 // apiClient.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// For Vercel deployment, use relative URL. For local dev, use localhost:5000
-const API_BASE_URL =
-  typeof window !== "undefined" && window.location.hostname === "localhost"
-    ? "http://127.0.0.1:5000"
-    : "";
+// Determine API base URL based on environment
+// In production (Vercel), use relative URLs (same domain)
+// In development, use localhost:5000 for Flask server
+function getApiBaseUrl(): string {
+  if (typeof window === "undefined") {
+    // Server-side rendering - return empty string for relative URLs
+    return "";
+  }
+  
+  // Check if we're in development (localhost)
+  const isLocalhost = 
+    window.location.hostname === "localhost" || 
+    window.location.hostname === "127.0.0.1";
+  
+  // Check if we're in production (Vercel deployment)
+  const isProduction = 
+    window.location.hostname.includes("vercel.app") ||
+    window.location.hostname.includes("vercel.com") ||
+    process.env.NODE_ENV === "production";
+  
+  if (isLocalhost && !isProduction) {
+    // Local development - use Flask server on port 5000
+    return "http://127.0.0.1:5000";
+  }
+  
+  // Production or other environments - use relative URLs
+  // This will work on Vercel since Flask and Next.js are on the same domain
+  return "";
+}
+
+const API_BASE_URL = getApiBaseUrl();
     
 type Position = "rb" | "qb" | "wr" | "te";
 

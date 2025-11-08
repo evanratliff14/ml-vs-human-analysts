@@ -6,13 +6,27 @@ from pathlib import Path
 import re
 
 app = Flask(__name__)
-# Enable CORS with explicit configuration
-# This automatically handles OPTIONS preflight requests for all routes
-CORS(app, 
-     origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-     methods=["GET", "POST", "OPTIONS"],
-     allow_headers=["Content-Type"],
-     supports_credentials=False)
+
+# Determine environment and set CORS origins accordingly
+import os
+is_production = os.getenv("VERCEL") == "1" or os.getenv("VERCEL_ENV") == "production"
+
+if is_production:
+    # In production (Vercel), allow requests from the same origin (relative URLs)
+    # Also allow from any Vercel deployment domain
+    CORS(app, 
+         origins=["*"],  # Allow all origins in production since we're on same domain
+         methods=["GET", "POST", "OPTIONS"],
+         allow_headers=["Content-Type"],
+         supports_credentials=False)
+else:
+    # In development, only allow localhost
+    CORS(app, 
+         origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+         methods=["GET", "POST", "OPTIONS"],
+         allow_headers=["Content-Type"],
+         supports_credentials=False)
+
 DIR = Path(__file__).resolve().parent
 
 # register routes via decorators (clearer)

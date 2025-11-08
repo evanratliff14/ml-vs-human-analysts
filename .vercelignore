@@ -1,3 +1,26 @@
-*.parquet
-*.csv
+# Exclude virtual environment
+src/venv/
+
+# Exclude cache and compiled files
+src/__pycache__/
+src/cache/
+*.pyc
+__pycache__/
+
+# Exclude node_modules (Vercel will install dependencies)
+web/node_modules/
+node_modules/
+
+# Exclude Next.js build (Vercel will build it)
+web/.next/
+.next/
+
+# Exclude large model files (not needed for API)
 *.joblib
+src/*.joblib
+
+# Note: We need to include .parquet and .txt files for the API to work!
+# Do NOT exclude:
+# - src/data/*.parquet
+# - src/data/*.txt
+# - src/data/*.csv (if needed)

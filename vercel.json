@@ -1,10 +1,17 @@
 {
-    "functions": {
-      "src/app.py": {
-        "runtime": "python3.11"
-      }
-    },
-    "routes": [
-      { "src": "/(.*)", "dest": "/src/app.py" }
-    ]
-  }
+  "buildCommand": "cd web && npm install && npm run build",
+  "outputDirectory": "web/.next",
+  "framework": null,
+  "installCommand": "cd web && npm install",
+  "functions": {
+    "api/**/*.py": {
+      "runtime": "python3.11"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.py"
+    }
+  ]
+}
