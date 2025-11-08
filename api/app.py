@@ -5,13 +5,16 @@ import pandas as pd
 from pathlib import Path
 import re
 from serverless_wsgi import handle_request
+import os
 
 
 app = Flask(__name__)
 # Enable CORS with expxlicit configuration
 # This automatically handles OPTIONS preflight requests for all routes
 CORS(app, 
-     origins=["http://localhost:3000", "http://127.0.0.1:3000", "https://ml-vs-human-analysts-qjyln8ob3-evans-projects-20880db0.vercel.app"],
+     origins=["http://localhost:3000",
+    "http://127.0.0.1:3000",
+    os.getenv("VERCEL_URL") and f"https://{os.getenv('VERCEL_URL')}"],
      methods=["POST", "OPTIONS"],
      allow_headers=["Content-Type"],
      supports_credentials=False)
