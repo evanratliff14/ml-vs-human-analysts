@@ -17,7 +17,7 @@ class Model:
         self.label = f"future_{points_type}/game"
         self.categorical_identifiers = ('season', 'team', 'position', 'player_name')
 
-        fantasy_data = pd.read_parquet('data.parquet')
+        fantasy_data = pd.read_parquet('data/data.parquet')
         self.fantasy_data = fantasy_data
 
         #clean data at this step - we don't want to call fantasy_df too many times to clean data

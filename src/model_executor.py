@@ -6,11 +6,11 @@ import os
 
 class ModelExecutor:
     def __init__(self):
-        if not os.path.isfile('data.parquet'):
+        if not os.path.isfile('data/data.parquet'):
             fdf = FantasyDataFrame()
             self.fdf = fdf
             logging.info("Creating parquet...")
-            fdf.players_stats.to_parquet('data.parquet', index=False)
+            fdf.players_stats.to_parquet('data/data.parquet', index=False)
         
         self.rb_seasonal = Seasonal(points_type='ppr', position = 'RB', type = 'xgb')
         # self.qb_seasonal = Seasonal(points_type='ppr', position = 'QB', type = 'xgb')
