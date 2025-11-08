@@ -11,13 +11,14 @@ import os
 app = Flask(__name__)
 # Enable CORS with expxlicit configuration
 # This automatically handles OPTIONS preflight requests for all routes
-CORS(app, 
-     origins=["http://localhost:3000",
-    "http://127.0.0.1:3000",
-    os.getenv("VERCEL_URL") and f"https://{os.getenv('VERCEL_URL')}"],
-     methods=["POST", "OPTIONS"],
-     allow_headers=["Content-Type"],
-     supports_credentials=False)
+CORS(app,
+     origins=[
+         "http://localhost:3000",
+         "http://127.0.0.1:3000",
+         r"https://ml-vs-human-analysts.*\.vercel\.app",
+         "https://ml-vs-human-analysts.vercel.app",
+     ])
+
 
 
 DIR = Path(__file__).resolve().parent
