@@ -4,6 +4,8 @@ from flask_cors import CORS
 import pandas as pd
 from pathlib import Path
 import re
+from serverless_wsgi import handle_request
+
 
 app = Flask(__name__)
 # Enable CORS with expxlicit configuration
@@ -165,3 +167,7 @@ def get_perm_importance():
         return jsonify({"features": top_features})
     except Exception as e:
         return jsonify({"error": f"Error reading perm importance file: {str(e)}"}), 500
+
+
+def handler(request, context):
+    return handle_request(app, request, context)
