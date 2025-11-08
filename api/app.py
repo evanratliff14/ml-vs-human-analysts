@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 
 app = Flask(__name__)
-# Enable CORS with explicit configuration
+# Enable CORS with expxlicit configuration
 # This automatically handles OPTIONS preflight requests for all routes
 CORS(app, 
      origins=["http://localhost:3000", "http://127.0.0.1:3000", "https://ml-vs-human-analysts-qjyln8ob3-evans-projects-20880db0.vercel.app"],
