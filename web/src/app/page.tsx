@@ -22,8 +22,10 @@ export default function Home() {
   const [currentOffset, setCurrentOffset] = useState(0);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [errorLoading, setErrorLoading] = useState(false);
+  const [errorError, setErrorError] = useState<string | null>(null);
   const [features, setFeatures] = useState<FeatureImportance[] | null>(null);
   const [featuresLoading, setFeaturesLoading] = useState(false);
+  const [featuresError, setFeaturesError] = useState<string | null>(null);
   const [showFeatures, setShowFeatures] = useState(false);
 
   const positions: { value: Position; label: string }[] = [
@@ -39,6 +41,9 @@ export default function Home() {
     // Reset features when position changes
     setFeatures(null);
     setShowFeatures(false);
+    setFeaturesError(null);
+    setErrorError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPosition, currentOffset]);
 
   const loadData = async () => {
@@ -63,10 +68,21 @@ export default function Home() {
 
   const loadError = async () => {
     setErrorLoading(true);
+    setErrorError(null);
     try {
+      console.log("Loading error for position:", selectedPosition);
       const result: ErrorResponse = await fetchError(selectedPosition);
-      setErrorText(result.error_text);
+      console.log("Error result:", result);
+      if (result && result.error_text) {
+        setErrorText(result.error_text);
+        setErrorError(null);
+      } else {
+        throw new Error("Invalid response format");
+      }
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to load error data";
+      console.error("Error loading error metrics:", err);
+      setErrorError(errorMessage);
       setErrorText(null);
     } finally {
       setErrorLoading(false);
@@ -81,13 +97,24 @@ export default function Home() {
     }
 
     setFeaturesLoading(true);
+    setFeaturesError(null);
     try {
+      console.log("Loading features for position:", selectedPosition);
       const result: PermImportanceResponse = await fetchPermImportance(
         selectedPosition
       );
-      setFeatures(result.features);
-      setShowFeatures(true);
+      console.log("Features result:", result);
+      if (result && result.features && Array.isArray(result.features)) {
+        setFeatures(result.features);
+        setShowFeatures(true);
+        setFeaturesError(null);
+      } else {
+        throw new Error("Invalid response format");
+      }
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to load features";
+      console.error("Error loading features:", err);
+      setFeaturesError(errorMessage);
       setFeatures(null);
       setShowFeatures(false);
     } finally {
@@ -341,6 +368,16 @@ export default function Home() {
                 <div className="flex items-center justify-center py-4">
                   <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-white"></div>
                 </div>
+              ) : errorError ? (
+                <div className="bg-red-900/20 border border-red-700 rounded-lg p-3">
+                  <p className="text-red-400 text-sm">{errorError}</p>
+                  <button
+                    onClick={loadError}
+                    className="mt-2 px-3 py-1 bg-red-900 hover:bg-red-800 rounded text-xs transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
               ) : errorText ? (
                 <pre className="text-sm text-gray-300 font-mono whitespace-pre-wrap bg-gray-800 p-4 rounded border border-gray-700">
                   {errorText}
@@ -374,7 +411,18 @@ export default function Home() {
                     : "Show Top 15"}
                 </button>
               </div>
-              {showFeatures && features && (
+              {featuresError && (
+                <div className="bg-red-900/20 border border-red-700 rounded-lg p-3 mb-4">
+                  <p className="text-red-400 text-sm">{featuresError}</p>
+                  <button
+                    onClick={loadFeatures}
+                    className="mt-2 px-3 py-1 bg-red-900 hover:bg-red-800 rounded text-xs transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+              {showFeatures && features && features.length > 0 && (
                 <div className="space-y-2">
                   {features.map((feature, index) => (
                     <div
@@ -396,7 +444,7 @@ export default function Home() {
                   ))}
                 </div>
               )}
-              {showFeatures && !features && !featuresLoading && (
+              {showFeatures && !features && !featuresLoading && !featuresError && (
                 <p className="text-gray-400 text-sm">
                   No features data available.
                 </p>
