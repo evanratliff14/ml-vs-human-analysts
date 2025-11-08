@@ -1,0 +1,10 @@
+{
+    "functions": {
+      "src/app.py": {
+        "runtime": "python3.11"
+      }
+    },
+    "routes": [
+      { "src": "/(.*)", "dest": "/src/app.py" }
+    ]
+  }
