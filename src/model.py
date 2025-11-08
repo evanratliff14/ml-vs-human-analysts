@@ -15,7 +15,7 @@ class Model:
     def __init__(self, points_type, **kwargs):
         logging.info("Reading data from parquet")
         self.label = f"future_{points_type}/game"
-        self.categorical_identifiers = ('season', 'team', 'position', 'player_name')
+        self.categorical_identifiers = ('season', 'team', 'position', 'player_name', 'headshot_url')
 
         fantasy_data = pd.read_parquet('data/data.parquet')
         self.fantasy_data = fantasy_data

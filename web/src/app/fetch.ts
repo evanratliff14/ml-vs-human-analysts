@@ -123,3 +123,48 @@ export async function fetchFeatures(
   const payload: FetchFeaturesPayload = { position };
   return postJSON<FeaturesResponse>("/api/get_features", payload, opts);
 }
+
+/**
+ * Response type for error endpoint
+ */
+export interface ErrorResponse {
+  error_text: string;
+}
+
+/**
+ * Fetches error metrics for a position.
+ */
+export async function fetchError(
+  position: Position | string,
+  opts?: { signal?: AbortSignal }
+): Promise<ErrorResponse> {
+  const payload: FetchFeaturesPayload = { position };
+  return postJSON<ErrorResponse>("/api/get_error", payload, opts);
+}
+
+/**
+ * Feature importance item
+ */
+export interface FeatureImportance {
+  feature: string;
+  importance: number;
+  std: number;
+}
+
+/**
+ * Response type for perm importance endpoint
+ */
+export interface PermImportanceResponse {
+  features: FeatureImportance[];
+}
+
+/**
+ * Fetches top 15 permutation importance features for a position.
+ */
+export async function fetchPermImportance(
+  position: Position | string,
+  opts?: { signal?: AbortSignal }
+): Promise<PermImportanceResponse> {
+  const payload: FetchFeaturesPayload = { position };
+  return postJSON<PermImportanceResponse>("/api/get_perm_importance", payload, opts);
+}

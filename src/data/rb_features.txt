@@ -81,3 +81,4 @@ percent_share_of_intended_air_yards_other_team_tes
 receiving_epa_other_team_tes
 half_ppr/game
 fantasy_points_half_ppr
+headshot_url

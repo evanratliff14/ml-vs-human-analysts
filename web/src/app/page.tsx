@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { fetchPredictionData, PaginatedResponse } from "./fetch";
+import {
+  fetchPredictionData,
+  fetchError,
+  fetchPermImportance,
+  PaginatedResponse,
+  ErrorResponse,
+  PermImportanceResponse,
+  FeatureImportance,
+} from "./fetch";
 
 type Position = "qb" | "rb" | "wr" | "te";
 
@@ -10,8 +18,13 @@ export default function Home() {
   const [data, setData] = useState<PaginatedResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize] = useState(25); // Fixed to 25 for Vercel free tier
   const [currentOffset, setCurrentOffset] = useState(0);
+  const [errorText, setErrorText] = useState<string | null>(null);
+  const [errorLoading, setErrorLoading] = useState(false);
+  const [features, setFeatures] = useState<FeatureImportance[] | null>(null);
+  const [featuresLoading, setFeaturesLoading] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(false);
 
   const positions: { value: Position; label: string }[] = [
     { value: "qb", label: "QB" },
@@ -20,11 +33,13 @@ export default function Home() {
     { value: "te", label: "TE" },
   ];
 
-  const pageSizes = [25, 50, 100];
-
   useEffect(() => {
     loadData();
-  }, [selectedPosition, pageSize, currentOffset]);
+    loadError();
+    // Reset features when position changes
+    setFeatures(null);
+    setShowFeatures(false);
+  }, [selectedPosition, currentOffset]);
 
   const loadData = async () => {
     setLoading(true);
@@ -46,14 +61,43 @@ export default function Home() {
     }
   };
 
+  const loadError = async () => {
+    setErrorLoading(true);
+    try {
+      const result: ErrorResponse = await fetchError(selectedPosition);
+      setErrorText(result.error_text);
+    } catch (err) {
+      setErrorText(null);
+    } finally {
+      setErrorLoading(false);
+    }
+  };
+
+  const loadFeatures = async () => {
+    if (features && showFeatures) {
+      // If already loaded and showing, just toggle
+      setShowFeatures(false);
+      return;
+    }
+
+    setFeaturesLoading(true);
+    try {
+      const result: PermImportanceResponse = await fetchPermImportance(
+        selectedPosition
+      );
+      setFeatures(result.features);
+      setShowFeatures(true);
+    } catch (err) {
+      setFeatures(null);
+      setShowFeatures(false);
+    } finally {
+      setFeaturesLoading(false);
+    }
+  };
+
   const handlePositionChange = (position: Position) => {
     setSelectedPosition(position);
     setCurrentOffset(0); // Reset to first page when changing position
-  };
-
-  const handlePageSizeChange = (size: number) => {
-    setPageSize(size);
-    setCurrentOffset(0); // Reset to first page when changing page size
   };
 
   const handlePreviousPage = () => {
@@ -71,11 +115,17 @@ export default function Home() {
   const currentPage = Math.floor(currentOffset / pageSize) + 1;
   const totalPages = data ? Math.ceil(data.total / pageSize) : 0;
 
-  // Get all unique column names from the data
+  // Get all unique column names from the data, excluding headshot_url for special handling
   const columns =
     data && data.data.length > 0
-      ? Object.keys(data.data[0]).sort()
+      ? Object.keys(data.data[0])
+          .filter((col) => col !== "headshot_url")
+          .sort()
       : [];
+
+  // Check if headshot_url exists in data
+  const hasHeadshotUrl =
+    data && data.data.length > 0 && "headshot_url" in data.data[0];
 
   // Format cell value for display
   const formatCellValue = (value: unknown): string => {
@@ -92,9 +142,33 @@ export default function Home() {
       {/* Header */}
       <header className="border-b border-gray-800 bg-black sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <h1 className="text-3xl font-bold mb-2">ML vs Human Analysts - by Evan Ratliff</h1>
-          <p className="text-gray-400 text-sm">Contact me: https://www.linkedin.com/in/ecratliff/ - https://github.com/evanratliff14</p>
+          <h1 className="text-3xl font-semibold mb-2">
+            ML vs Human Analysts - Evan Ratliff
+          </h1>
 
+          {/* Headshot */}
+          <img
+            src="/headshot.jpg"
+            alt="Evan Ratliff Headshot"
+            className="w-24 h-24 rounded-full mb-2"
+          />
+
+          <p className="text-gray-400 text-sm">
+            Contact me:{" "}
+            <a
+              href="https://www.linkedin.com/in/ecratliff/"
+              className="underline"
+            >
+              LinkedIn
+            </a>{" "}
+            -{" "}
+            <a
+              href="https://github.com/evanratliff14"
+              className="underline ml-1"
+            >
+              GitHub
+            </a>
+          </p>
         </div>
       </header>
 
@@ -119,130 +193,217 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Page Size Selector */}
-        <div className="mb-6 flex items-center gap-4">
-          <label className="text-sm text-gray-400">Rows per page:</label>
-          <div className="flex gap-2">
-            {pageSizes.map((size) => (
-              <button
-                key={size}
-                onClick={() => handlePageSizeChange(size)}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  pageSize === size
-                    ? "bg-gray-800 text-white border border-gray-600"
-                    : "bg-gray-900 text-gray-400 hover:bg-gray-800 hover:text-gray-300 border border-gray-700"
-                }`}
-              >
-                {size}
-              </button>
-            ))}
+        {/* Two-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left column - Main table (2/3 width on large screens) */}
+          <div className="lg:col-span-2">
+            {/* Loading State */}
+            {loading && (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
+                <span className="ml-4 text-gray-400">Loading data...</span>
+              </div>
+            )}
+
+            {/* Error State */}
+            {error && (
+              <div className="bg-red-900/20 border border-red-700 rounded-lg p-4 mb-6">
+                <p className="text-red-400 font-medium">Error: {error}</p>
+                <button
+                  onClick={loadData}
+                  className="mt-2 px-4 py-2 bg-red-900 hover:bg-red-800 rounded-md text-sm transition-colors"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {/* Data Table */}
+            {!loading && !error && data && (
+              <>
+                <div className="bg-gray-900 rounded-lg border border-gray-800 overflow-hidden mb-6">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr>
+                          {/* Add headshot column header if headshot_url exists */}
+                          {hasHeadshotUrl && (
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider bg-gray-800 border-b border-gray-700">
+                              Photo
+                            </th>
+                          )}
+                          {columns.map((column) => (
+                            <th
+                              key={column}
+                              className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider bg-gray-800 border-b border-gray-700"
+                            >
+                              {column.replace(/_/g, " ").replace(/\//g, " / ")}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-800">
+                        {data.data.map((row, rowIndex) => (
+                          <tr
+                            key={rowIndex}
+                            className="hover:bg-gray-800 transition-colors"
+                          >
+                            {/* Render headshot image if headshot_url exists */}
+                            {hasHeadshotUrl && (
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                {row.headshot_url ? (
+                                  <img
+                                    src={String(row.headshot_url)}
+                                    alt={`${row.player_name || "Player"} headshot`}
+                                    className="w-10 h-10 rounded-full object-cover"
+                                    onError={(e) => {
+                                      // Hide broken images
+                                      (e.target as HTMLImageElement).style.display =
+                                        "none";
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full bg-gray-700"></div>
+                                )}
+                              </td>
+                            )}
+                            {columns.map((column) => (
+                              <td
+                                key={column}
+                                className="px-4 py-3 whitespace-nowrap text-sm text-gray-300"
+                              >
+                                {formatCellValue(row[column])}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Pagination Controls */}
+                <div className="flex items-center justify-between bg-gray-900 rounded-lg border border-gray-800 px-6 py-4">
+                  <div className="text-sm text-gray-400">
+                    Showing {currentOffset + 1} to{" "}
+                    {Math.min(currentOffset + pageSize, data.total)} of{" "}
+                    {data.total} entries
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={handlePreviousPage}
+                      disabled={currentOffset === 0 || loading}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                        currentOffset === 0 || loading
+                          ? "bg-gray-800 text-gray-600 cursor-not-allowed"
+                          : "bg-gray-800 text-white hover:bg-gray-700 border border-gray-700"
+                      }`}
+                    >
+                      Previous
+                    </button>
+                    <div className="text-sm text-gray-400">
+                      Page {currentPage} of {totalPages}
+                    </div>
+                    <button
+                      onClick={handleNextPage}
+                      disabled={!data.has_more || loading}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                        !data.has_more || loading
+                          ? "bg-gray-800 text-gray-600 cursor-not-allowed"
+                          : "bg-gray-800 text-white hover:bg-gray-700 border border-gray-700"
+                      }`}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Empty State */}
+            {!loading && !error && data && data.data.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-gray-400 text-lg">
+                  No data available for this position.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Right column - Error and Features (1/3 width on large screens) */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Error Display */}
+            <div className="bg-gray-900 rounded-lg border border-gray-800 p-6">
+              <h2 className="text-xl font-semibold mb-4 text-white">
+                Model Error Metrics
+              </h2>
+              {errorLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-white"></div>
+                </div>
+              ) : errorText ? (
+                <pre className="text-sm text-gray-300 font-mono whitespace-pre-wrap bg-gray-800 p-4 rounded border border-gray-700">
+                  {errorText}
+                </pre>
+              ) : (
+                <p className="text-gray-400 text-sm">No error data available.</p>
+              )}
+            </div>
+
+            {/* Features Display */}
+            <div className="bg-gray-900 rounded-lg border border-gray-800 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-white">
+                  Top Features
+                </h2>
+                <button
+                  onClick={loadFeatures}
+                  disabled={featuresLoading}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    featuresLoading
+                      ? "bg-gray-800 text-gray-600 cursor-not-allowed"
+                      : showFeatures
+                      ? "bg-gray-700 text-white hover:bg-gray-600 border border-gray-600"
+                      : "bg-gray-800 text-white hover:bg-gray-700 border border-gray-700"
+                  }`}
+                >
+                  {featuresLoading
+                    ? "Loading..."
+                    : showFeatures
+                    ? "Hide Features"
+                    : "Show Top 15"}
+                </button>
+              </div>
+              {showFeatures && features && (
+                <div className="space-y-2">
+                  {features.map((feature, index) => (
+                    <div
+                      key={index}
+                      className="bg-gray-800 p-3 rounded border border-gray-700"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium text-white">
+                          {index + 1}. {feature.feature.replace(/_/g, " ")}
+                        </span>
+                        <span className="text-sm text-gray-300">
+                          {feature.importance.toFixed(4)}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        ± {feature.std.toFixed(4)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {showFeatures && !features && !featuresLoading && (
+                <p className="text-gray-400 text-sm">
+                  No features data available.
+                </p>
+              )}
+            </div>
           </div>
         </div>
-
-        {/* Loading State */}
-        {loading && (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
-            <span className="ml-4 text-gray-400">Loading data...</span>
-          </div>
-        )}
-
-        {/* Error State */}
-        {error && (
-          <div className="bg-red-900/20 border border-red-700 rounded-lg p-4 mb-6">
-            <p className="text-red-400 font-medium">Error: {error}</p>
-            <button
-              onClick={loadData}
-              className="mt-2 px-4 py-2 bg-red-900 hover:bg-red-800 rounded-md text-sm transition-colors"
-            >
-              Retry
-            </button>
-          </div>
-        )}
-
-        {/* Data Table */}
-        {!loading && !error && data && (
-          <>
-            <div className="bg-gray-900 rounded-lg border border-gray-800 overflow-hidden mb-6">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr>
-                      {columns.map((column) => (
-                        <th
-                          key={column}
-                          className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider bg-gray-800 border-b border-gray-700"
-                        >
-                          {column.replace(/_/g, " ").replace(/\//g, " / ")}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-800">
-                    {data.data.map((row, rowIndex) => (
-                      <tr
-                        key={rowIndex}
-                        className="hover:bg-gray-800 transition-colors"
-                      >
-                        {columns.map((column) => (
-                          <td
-                            key={column}
-                            className="px-4 py-3 whitespace-nowrap text-sm text-gray-300"
-                          >
-                            {formatCellValue(row[column])}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Pagination Controls */}
-            <div className="flex items-center justify-between bg-gray-900 rounded-lg border border-gray-800 px-6 py-4">
-              <div className="text-sm text-gray-400">
-                Showing {currentOffset + 1} to{" "}
-                {Math.min(currentOffset + pageSize, data.total)} of {data.total}{" "}
-                entries
-              </div>
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={handlePreviousPage}
-                  disabled={currentOffset === 0 || loading}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    currentOffset === 0 || loading
-                      ? "bg-gray-800 text-gray-600 cursor-not-allowed"
-                      : "bg-gray-800 text-white hover:bg-gray-700 border border-gray-700"
-                  }`}
-                >
-                  Previous
-                </button>
-                <div className="text-sm text-gray-400">
-                  Page {currentPage} of {totalPages}
-                </div>
-                <button
-                  onClick={handleNextPage}
-                  disabled={!data.has_more || loading}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    !data.has_more || loading
-                      ? "bg-gray-800 text-gray-600 cursor-not-allowed"
-                      : "bg-gray-800 text-white hover:bg-gray-700 border border-gray-700"
-                  }`}
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Empty State */}
-        {!loading && !error && data && data.data.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-400 text-lg">No data available for this position.</p>
-          </div>
-        )}
       </main>
     </div>
   );

@@ -107,3 +107,4 @@ catch_percentage_other_team_tes
 wopr_other_team_tes
 percent_share_of_intended_air_yards_other_team_tes
 receiving_epa_other_team_tes
+headshot_url

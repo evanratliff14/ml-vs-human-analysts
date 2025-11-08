@@ -14,6 +14,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 import nflreadpy as nfl
+from sklearn.inspection import permutation_importance
+
 
 
 class Seasonal(Model):
@@ -53,10 +55,10 @@ class Seasonal(Model):
         test = pd.DataFrame()
         eval = pd.DataFrame()
         
-        if os.path.isfile(f'{self.position}_test.parquet') and os.path.isfile(f'{self.position}train.parquet') and os.path.isfile(f'{self.position}_eval.parquet'):
-            train = pd.read_parquet(f'{self.position}_train.parquet').fillna(0, inplace=False, index=False)
-            test = pd.read_parquet(f'{self.position}_test.parquet').fillna(0, inplace=False, index=False)
-            eval = pd.read_parquet(f'{self.position}_eval.parquet').fillna(0, inplace=False, index=False)
+        if os.path.isfile(f'cache/{self.position.lower()}_test.parquet') and os.path.isfile(f'cache/{self.position.lower()}train.parquet') and os.path.isfile(f'cache/{self.position.lower()}_eval.parquet'):
+            train = pd.read_parquet(f'cache/{self.position}_train.parquet').fillna(0, inplace=False, index=False)
+            test = pd.read_parquet(f'cache/{self.position}_test.parquet').fillna(0, inplace=False, index=False)
+            eval = pd.read_parquet(f'cache/{self.position}_eval.parquet').fillna(0, inplace=False, index=False)
 #LEGACY 
             # train[self.label] = self.y_train
             # test[self.label]  = self.y_test
@@ -93,9 +95,9 @@ class Seasonal(Model):
 
 
             # Save parquets without the pandas index column
-            train.to_parquet(f'{self.position}_train.parquet', index=False )
-            test.to_parquet(f'{self.position}_test.parquet', index=False)
-            eval.to_parquet(f'{self.position}_eval.parquet', index=False)
+            train.to_parquet(f'cache/{self.position.lower()}_train.parquet', index=False )
+            test.to_parquet(f'cache/{self.position.lower()}_test.parquet', index=False)
+            eval.to_parquet(f'cache/{self.position.lower()}_eval.parquet', index=False)
             
     
         self.train = train
@@ -156,10 +158,10 @@ class Seasonal(Model):
 
     def set_features(self):
         logging.info("Setting features...")
-        if not os.path.isfile(f'{self.position}_features.txt'):
+        if not os.path.isfile(f'data/{self.position.lower()}_features.txt'):
             return Exception(f"{self.position}_features.txt does not exist in filepath!")
         else:
-            features = [line.strip() for line in open(f"{self.position}_features.txt")]
+            features = [line.strip() for line in open(f"data/{self.position.lower()}_features.txt")]
             self.features = features
         logging.info("Features set.")
 
@@ -191,8 +193,9 @@ class Seasonal(Model):
         model_string = "Features: \n"
         model_string = model_string + str(self.features) + "\n"
         # intentional side effect
-        display = pd.concat(objs = [self.test, self.eval])
-        display = display[['player_name', 'predictions', 'season', self.label]].sort_values(
+        display = self.eval.copy()
+        display['season'] = display['season'] +1
+        display = display[['headshot_url', 'player_name', 'predictions', 'season', self.label]].sort_values(
             by='predictions',
             ascending = False,
             inplace=False,
@@ -206,6 +209,7 @@ class Seasonal(Model):
             kind='stable'
               # descending predictions, ascending season
         )  
+        display = display.drop_duplicates(subset=['player_name', 'season'], keep='first')
         logging.info(display)
 
         
@@ -217,8 +221,13 @@ class Seasonal(Model):
         model_string += "Test MAE: " + str(self.train_mae) + "\n"
         model_string += "Eval MSE: " + str(self.eval_mse) + "\n"
         model_string += "Eval MAE: " + str(self.eval_mae) + "\n"
+        
+        with open(f'data/{self.position}_error.txt', 'w') as file:
+            file.write("Train RMSE: " + str(self.train_mse**(1/2)) + "\n")
+            file.write("Train MAE: " + str(self.train_mae) + "\n")
+            file.write("Eval RMSE: " + str(self.eval_mse**(1/2)) + "\n")
+            file.write("Eval MAE: " + str(self.eval_mae) + "\n")
 
-        from sklearn.inspection import permutation_importance
         features = [feat for feat in self.features if feat not in self.categorical_identifiers]
 
         r = permutation_importance(self.model, self.eval[features], self.eval[self.label],
@@ -242,12 +251,13 @@ class Seasonal(Model):
         # Pretty print only features that are “significant” by your chosen threshold
         sorted_idx = r.importances_mean.argsort()[::-1]
         print("Test permutation importance")
-        for i in sorted_idx:
-            mean = s.importances_mean[i]
-            std = s.importances_std[i]
-            # heuristic: mean is reliably > 0 (2-sigma rule); adjust multiplier if you want
-            if mean - 2 * std > 0:
-                print(f"{features[i]:<30} {mean:.4f} +/- {std:.4f}")
+        with open(f'data/{self.position}_perm_importance.txt', 'w') as file:
+            for i in sorted_idx:
+                mean = s.importances_mean[i]
+                std = s.importances_std[i]
+                # heuristic: mean is reliably > 0 (2-sigma rule); adjust multiplier if you want
+                if mean - 2 * std > 0:
+                    file.write(f"{features[i]:<30} {mean:.4f} +/- {std:.4f}")
 
 
         return model_string
