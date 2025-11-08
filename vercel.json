@@ -1,14 +1,25 @@
 {
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "https://ml-vs-human-analysts-qjyln8ob3-evans-projects-20880db0.vercel.app" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+        { "key": "Access-Control-Allow-Credentials", "value": "false" }
+      ]
+    }
+  ],
   "functions": {
-    "api/app.py": { 
+    "api/app.py": {
       "runtime": "python3.11",
       "memory": 1024
     }
   },
   "routes": [
-    { 
-      "src": "/api/(.*)", 
-      "dest": "/api/app.py",
+    {
+      "src": "/api/(.*)",
+      "dest": "api/app.py",
       "methods": ["GET", "POST", "OPTIONS"]
     }
   ]
