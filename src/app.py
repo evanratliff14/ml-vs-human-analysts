@@ -15,7 +15,6 @@ CORS(app,
      supports_credentials=False)
 DIR = Path(__file__).resolve().parent
 
-# register routes via decorators (clearer)
 @app.route("/")
 def root():
     return jsonify({"ok": True, "msg": "server running"})
@@ -143,12 +142,6 @@ def get_perm_importance():
             # This should contain: feature_name + spaces + (possibly part of importance if there are multiple numbers)
             text_before = content[prev_end:match_start].strip()
             
-            # The feature name is everything except the last number (which is the importance)
-            # Find the last number in text_before - that's where the importance starts
-            # Everything before that is the feature name
-            # But actually, importance is already captured in the match, so we need to find
-            # where in text_before the importance number appears
-            
             # Actually, simpler: the text_before ends with spaces and then the importance number
             # So we can find the last sequence of non-digit, non-space characters
             feature_match = re.search(r'([a-zA-Z_/][a-zA-Z0-9_/]*)\s*$', text_before)
@@ -173,6 +166,6 @@ def get_perm_importance():
     except Exception as e:
         return jsonify({"error": f"Error reading perm importance file: {str(e)}"}), 500
 
-if __name__ == "__main__":
-    # run with: python app.py
-    app.run(debug=True, host="127.0.0.1", port=5000)
+def handler(request, context):
+    """Serverless entry point for Vercel."""
+    return app(request.environ, request.start_response)
