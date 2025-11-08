@@ -20,11 +20,21 @@ make sure python3 version is supported (recommended ~3.11, but multiple versions
 
 ``bash
 python3 model_executor.py
+flask run (to run the backend in development)
 
-## to tweak features
+## to tweak model features
 edit/add/remove lines in {position}_features.txt
 
 ## other navigation
+/data
+    - all data accessible via API (lightweight parquets)
+
+/viewable
+    - historical model predictions for easy open (csv)
+
+/cache
+    - files that are saved just as to save loading time for model_executor.py
+
 .parquet --> data for non-reloading when calling model_executor.py (calls FantasyDataFrame)
 .joblib --> lightweight models
 .csv --> heavier weight than parquet, used for local display
