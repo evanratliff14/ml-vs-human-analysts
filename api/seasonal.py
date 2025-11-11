@@ -170,12 +170,33 @@ class Seasonal(Model):
         
     def cross_validate(self):
         try:
-            self.test_mse = mean_squared_error(self.test['predictions'], self.test[self.label])
-            self.test_mae = mean_absolute_error(self.test['predictions'],self.test[self.label])
-            self.train_mse = mean_squared_error(self.train['predictions'],self.train[self.label])
-            self.train_mae = mean_absolute_error(self.train['predictions'],self.train[self.label])
-            self.eval_mse = mean_squared_error(self.eval['predictions'],self.eval[self.label])
-            self.eval_mae = mean_absolute_error(self.eval['predictions'],self.eval[self.label])
+            self.test.sort_values(
+            by='predictions',
+            ascending = False,
+            inplace=False,
+            kind = 'stable'
+              # descending predictions, ascending season
+            )     
+            self.train.sort_values(
+            by='predictions',
+            ascending = False,
+            inplace=False,
+            kind = 'stable'
+              # descending predictions, ascending season
+            )     
+            self.eval.sort_values(
+            by='predictions',
+            ascending = False,
+            inplace=False,
+            kind = 'stable'
+              # descending predictions, ascending season
+            )     
+            self.test_mse = mean_squared_error(self.test['predictions'].iloc[0:100], self.test[self.label].iloc[0:100])
+            self.test_mae = mean_absolute_error(self.test['predictions'].iloc[0:100],self.test[self.label].iloc[0:100])
+            self.train_mse = mean_squared_error(self.train['predictions'].iloc[0:100],self.train[self.label].iloc[0:100])
+            self.train_mae = mean_absolute_error(self.train['predictions'].iloc[0:100],self.train[self.label].iloc[0:100])
+            self.eval_mse = mean_squared_error(self.eval['predictions'].iloc[0:100],self.eval[self.label].iloc[0:100])
+            self.eval_mae = mean_absolute_error(self.eval['predictions'].iloc[0:100],self.eval[self.label].iloc[0:100])
         except Exception as e:
             print("Error in cross_validate" + str(e))
 

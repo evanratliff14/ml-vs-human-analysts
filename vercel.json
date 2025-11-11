@@ -1,20 +1,20 @@
 {
   "functions": {
-    "api/fetch_data.py": { 
-      "runtime": "python3.11",
-      "memory": 1024
-    },
-    "api/get_features.py": {
-      "runtime": "python3.11",
-      "memory": 1024
-    },
-    "api/get_error.py": {
-      "runtime": "python3.11",
-      "memory": 1024
-    },
-    "api/get_perm_importance.py": {
+    "api/app.py": { 
       "runtime": "python3.11",
       "memory": 1024
     }
-  }
+  },
+  "routes": [
+    { 
+      "src": "/api/(.*)", 
+      "dest": "/api/app.py",
+      "methods": ["GET", "POST", "OPTIONS"]
+    }
+  ],
+  "buildCommand": "next build",
+  "devCommand": "next dev",
+  "outputDirectory": ".next",
+  "framework": "nextjs"
+
 }
