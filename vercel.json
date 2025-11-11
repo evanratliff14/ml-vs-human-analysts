@@ -1,20 +1,25 @@
 {
+  "version": 2,
+  "builds": [
+    { 
+      "src": "api/app.py", 
+      "use": "@vercel/python"
+    },
+    { 
+      "src": "web/package.json", 
+      "use": "@vercel/next" 
+    }
+  ],
   "functions": {
-    "api/app.py": { 
+    "api/app.py": {
       "runtime": "python3.11",
       "memory": 1024
     }
   },
-  "routes": [
-    { 
-      "src": "/api/(.*)", 
-      "dest": "/api/app.py",
-      "methods": ["GET", "POST", "OPTIONS"]
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/app.py"
     }
-  ],
-  "buildCommand": "next build",
-  "devCommand": "next dev",
-  "outputDirectory": ".next",
-  "framework": "nextjs"
-
+  ]
 }

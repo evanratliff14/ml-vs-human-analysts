@@ -2,27 +2,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // For Vercel deployment, use relative URL. For local dev, use localhost:5000
 const API_BASE_URL = (() => {
-  // Client-side (browser)
-  if (typeof window !== "undefined") {
-    // Local dev in the browser -> talk to local Flask
-    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-      return "http://127.0.0.1:5000";
-    }
-    // Deployed frontend + backend in same Vercel project -> use relative paths
-    return "";
-  }
-
-  // Server-side (SSR / Node)
-  // 1) Prefer an explicitly configured public env var (set NEXT_PUBLIC_API_URL in Vercel)
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
-  }
   // 2) If Vercel provides VERCEL_URL at build/runtime, construct an absolute URL
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`;
   }
   // 3) Fallback to localhost for server-side dev
-  return "http://127.0.0.1:5000";
+  return "http://localhost:3000";
 })();
     
 type Position = "rb" | "qb" | "wr" | "te";
