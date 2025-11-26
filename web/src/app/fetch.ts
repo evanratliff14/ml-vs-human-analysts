@@ -41,7 +41,7 @@ export interface PaginatedResponse {
 /**
  * Throws an Error on non-2xx responses. Attempts to include server body text in the message.
  */
-async function postJSON<T = any>(
+async function postJSON<T = unknown>(
   endpoint: string,
   payload: Record<string, unknown> = {},
   opts?: { signal?: AbortSignal }
