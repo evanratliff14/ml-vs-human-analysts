@@ -1,13 +1,5 @@
-// apiClient.ts
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// For Vercel deployment, use relative URL. For local dev, use localhost:5000
 const API_BASE_URL = (() => {
-  // 2) If Vercel provides VERCEL_URL at build/runtime, construct an absolute URL
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-  // 3) Fallback to localhost for server-side dev
-  return "http://localhost:3000";
+  return "https://ml-vs-human-analysts-backend.vercel.app";
 })();
     
 type Position = "rb" | "qb" | "wr" | "te";
@@ -114,7 +106,7 @@ export async function fetchPredictionData(
       limit,
       offset,
     };
-    return postJSON<PaginatedResponse>("/api/fetch_data", payload, opts);
+    return postJSON<PaginatedResponse>("/fetch_data", payload, opts);
   }
 
 /**
@@ -125,7 +117,7 @@ export async function fetchFeatures(
   opts?: { signal?: AbortSignal }
 ): Promise<FeaturesResponse> {
   const payload: FetchFeaturesPayload = { position };
-  return postJSON<FeaturesResponse>("/api/get_features", payload, opts);
+  return postJSON<FeaturesResponse>("/get_features", payload, opts);
 }
 
 /**
@@ -143,7 +135,7 @@ export async function fetchError(
   opts?: { signal?: AbortSignal }
 ): Promise<ErrorResponse> {
   const payload: FetchFeaturesPayload = { position };
-  return postJSON<ErrorResponse>("/api/get_error", payload, opts);
+  return postJSON<ErrorResponse>("/get_error", payload, opts);
 }
 
 /**
@@ -170,5 +162,5 @@ export async function fetchPermImportance(
   opts?: { signal?: AbortSignal }
 ): Promise<PermImportanceResponse> {
   const payload: FetchFeaturesPayload = { position };
-  return postJSON<PermImportanceResponse>("/api/get_perm_importance", payload, opts);
+  return postJSON<PermImportanceResponse>("/get_perm_importance", payload, opts);
 }
