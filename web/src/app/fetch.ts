@@ -79,9 +79,14 @@ async function postJSON<T = unknown>(
     throw new Error(`Request failed (${res.status} ${res.statusText}): ${bodyText}`);
   }
 
-  // parse JSON
+  // pandas/Flask can emit NaN/Infinity, which are not valid JSON.
+  const bodyText = await res.text();
+  const sanitized = bodyText
+    .replace(/(?<![A-Za-z0-9_])NaN(?![A-Za-z0-9_])/g, "null")
+    .replace(/(?<![A-Za-z0-9_])-Infinity(?![A-Za-z0-9_])/g, "null")
+    .replace(/(?<![A-Za-z0-9_])Infinity(?![A-Za-z0-9_])/g, "null");
   try {
-    return (await res.json()) as T;
+    return JSON.parse(sanitized) as T;
   } catch (err) {
     throw new Error("Response did not contain valid JSON");
   }
