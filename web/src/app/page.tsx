@@ -10,7 +10,6 @@ import {
   PermImportanceResponse,
   FeatureImportance,
 } from "./fetch";
-import { Analytics } from "@vercel/analytics/next"
 
 type Position = "qb" | "rb" | "wr" | "te";
 
